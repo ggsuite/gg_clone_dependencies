@@ -22,6 +22,29 @@ class CloneDependencies extends DirCommand<dynamic> {
           description: 'Clones all dependencies to the current workspace',
         );
 
+  ///
+  Future<bool> Function(
+    Directory,
+    String, {
+    Future<ProcessResult> Function(
+      String,
+      List<String>, {
+      String? workingDirectory,
+    })? processRun,
+  }) mockCheckGithubOrigin = checkGithubOrigin;
+
+  ///
+  Future<void> Function(
+    Directory,
+    String,
+    GgLog, {
+    Future<ProcessResult> Function(
+      String,
+      List<String>, {
+      String? workingDirectory,
+    })? processRun,
+  }) mockCloneDependency = cloneDependency;
+
   // ...........................................................................
   @override
   Future<void> get({required Directory directory, required GgLog ggLog}) async {
@@ -43,66 +66,75 @@ class CloneDependencies extends DirCommand<dynamic> {
 
     await cloneDependencies(workspaceDir, projectDir, dependencies, ggLog);
   }
-}
 
-// ...........................................................................
-/// Process the node
-Future<void> cloneDependencies(
-  Directory workspaceDir,
-  Directory projectDir,
-  Set<String> processedNodes,
-  GgLog ggLog,
-) async {
-  projectDir = correctDir(projectDir);
-  final pubspec = File('${projectDir.path}/pubspec.yaml');
+  // ...........................................................................
+  /// Process the node
+  Future<void> cloneDependencies(
+    Directory workspaceDir,
+    Directory projectDir,
+    Set<String> processedNodes,
+    GgLog ggLog,
+  ) async {
+    projectDir = correctDir(projectDir);
+    final pubspec = File('${projectDir.path}/pubspec.yaml');
 
-  final pubspecContent = await pubspec.readAsString();
-
-  late Pubspec pubspecYaml;
-  try {
-    pubspecYaml = Pubspec.parse(pubspecContent);
-  } catch (e) {
-    throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
-  }
-
-  /*// Load the YAML content as a Map
-  final yamlMap = loadYaml(pubspecContent) as Map;
-
-  // Check if the 'dependencies' section exists
-  if (!yamlMap.containsKey('dependencies') &&
-      !yamlMap.containsKey('dev_dependencies')) {
-    return;
-  }*/
-
-  // Iterate all dependencies
-  final keys = [
-    ...pubspecYaml.dependencies.keys,
-    ...pubspecYaml.devDependencies.keys,
-  ];
-
-  for (final dependency in keys) {
-    if (processedNodes.contains(dependency)) {
-      continue;
-    }
-    processedNodes.add(dependency);
-
-    // check if dependency already exists
-    if (await dependencyExists(workspaceDir, dependency, ggLog)) {
-      continue;
+    if (!pubspec.existsSync()) {
+      return;
     }
 
-    // check if dependency is on github
-    bool isOnGithub = await checkGithubOrigin(workspaceDir, dependency);
-    if (!isOnGithub) {
-      continue;
+    final pubspecContent = await pubspec.readAsString();
+
+    late Pubspec pubspecYaml;
+    try {
+      pubspecYaml = Pubspec.parse(pubspecContent);
+    } catch (e) {
+      throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
     }
 
-    // clone dependency
-    await cloneDependency(workspaceDir, dependency, ggLog);
+    /*// Load the YAML content as a Map
+    final yamlMap = loadYaml(pubspecContent) as Map;
 
-    // execute cloneDependencies for dependency
-    final dependencyDir = Directory('${workspaceDir.path}/$dependency');
-    await cloneDependencies(workspaceDir, dependencyDir, processedNodes, ggLog);
+    // Check if the 'dependencies' section exists
+    if (!yamlMap.containsKey('dependencies') &&
+        !yamlMap.containsKey('dev_dependencies')) {
+      return;
+    }*/
+
+    // Iterate all dependencies
+    final keys = [
+      ...pubspecYaml.dependencies.keys,
+      ...pubspecYaml.devDependencies.keys,
+    ];
+
+    for (final dependency in keys) {
+      if (processedNodes.contains(dependency)) {
+        continue;
+      }
+      processedNodes.add(dependency);
+
+      // check if dependency already exists
+      if (await dependencyExists(workspaceDir, dependency, ggLog)) {
+        continue;
+      }
+
+      // check if dependency is on github
+      bool isOnGithub = await mockCheckGithubOrigin(workspaceDir, dependency);
+      if (!isOnGithub) {
+        continue;
+      }
+
+      // clone dependency
+      await mockCloneDependency(workspaceDir, dependency, ggLog);
+
+      // execute cloneDependencies for dependency
+      final dependencyDir = Directory('${workspaceDir.path}/$dependency');
+      await cloneDependencies(
+        workspaceDir,
+        dependencyDir,
+        processedNodes,
+        ggLog,
+      );
+    }
   }
 }
 
