@@ -5,14 +5,14 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:args/command_runner.dart';
-import './commands/my_command.dart';
+import 'commands/clone_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 
 /// The command line interface for GgCloneDependencies
 class GgCloneDependencies extends Command<dynamic> {
   /// Constructor
   GgCloneDependencies({required this.ggLog}) {
-    addSubcommand(MyCommand(ggLog: ggLog));
+    addSubcommand(CloneDependencies(ggLog: ggLog));
   }
 
   /// The log function

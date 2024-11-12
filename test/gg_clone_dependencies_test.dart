@@ -9,14 +9,29 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_clone_dependencies/gg_clone_dependencies.dart';
+import 'package:path/path.dart';
 import 'package:test/test.dart';
 import 'package:gg_args/gg_args.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   final messages = <String>[];
 
-  setUp(() {
+  Directory tempDir = Directory('');
+
+  setUp(() async {
     messages.clear();
+
+    tempDir = createTempDir('GgToLocal_command', 'project1');
+  });
+
+  tearDown(() {
+    deleteDirs(
+      [
+        tempDir,
+      ],
+    );
   });
 
   group('GgCloneDependencies()', () {
@@ -30,12 +45,25 @@ void main() {
       )..addCommand(ggCloneDependencies);
 
       test('should allow to run the code from command line', () async {
+        File(join(tempDir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: test_package\nversion: 1.0.0\ndependencies:',
+        );
+
         await capturePrint(
           ggLog: messages.add,
-          code: () async => await runner
-              .run(['ggCloneDependencies', 'my-command', '--input', 'foo']),
+          code: () async => await runner.run(
+            [
+              'ggCloneDependencies',
+              'clone-dependencies',
+              '--input',
+              tempDir.path,
+            ],
+          ),
         );
-        expect(messages, contains('Running my-command with param foo'));
+        expect(
+          messages,
+          contains('Running clone-dependencies in ${tempDir.path}'),
+        );
       });
 
       // .......................................................................

@@ -7,37 +7,48 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:gg_capture_print/gg_capture_print.dart';
-
 import 'package:test/test.dart';
 
 import '../../bin/gg_clone_dependencies.dart';
+import '../test_helpers.dart';
 
 void main() {
+  Directory tempDir = Directory('');
+
+  Directory tempDir2 = Directory('');
+
+  setUp(() async {
+    tempDir = createTempDir('executable_command_test');
+    tempDir2 = createTempDir('executable_command_test2');
+  });
+
+  tearDown(() {
+    deleteDirs(
+      [
+        tempDir,
+        tempDir2,
+      ],
+    );
+  });
+
   group('bin/gg_clone_dependencies.dart', () {
     // #########################################################################
 
     test('should be executable', () async {
       // Execute bin/gg_clone_dependencies.dart and check if it prints help
       final result = await Process.run(
-        './bin/gg_clone_dependencies.dart',
-        ['my-command'],
+        'dart',
+        [
+          './bin/gg_clone_dependencies.dart',
+          'clone-dependencies',
+          '--input',
+          tempDir.path,
+        ],
         stdoutEncoding: utf8,
         stderrEncoding: utf8,
       );
 
-      final expectedMessages = [
-        'Invalid argument(s): Option',
-        red('input'),
-        'is mandatory.',
-      ];
-
-      final stdout = result.stdout as String;
-
-      for (final msg in expectedMessages) {
-        expect(stdout, contains(msg));
-      }
+      expect(result.stdout, contains('No project root found'));
     });
   });
 
@@ -47,13 +58,13 @@ void main() {
       test('should print "value"', () async {
         // Execute bin/gg_clone_dependencies.dart and check if it prints "value"
         final messages = <String>[];
-        await run(args: ['my-command', '--input', '5'], ggLog: messages.add);
+        await run(
+          args: ['clone-dependencies', '--input', tempDir2.path],
+          ggLog: messages.add,
+        );
 
-        final expectedMessages = ['Running my-command with param 5'];
-
-        for (final msg in expectedMessages) {
-          expect(hasLog(messages, msg), isTrue);
-        }
+        expect(messages, isNotEmpty);
+        expect(messages.last, contains('No project root found'));
       });
     });
   });
