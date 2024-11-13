@@ -223,8 +223,11 @@ dependencies:
             Directory(p.join(workspaceDir.path, dependencyName));
         await dependencyDir.create(recursive: true);
 
-        final exists =
-            await dependencyExists(workspaceDir, dependencyName, messages.add);
+        final exists = await dependencyExists(
+          dependencyDir,
+          dependencyName,
+          ggLog: messages.add,
+        );
         expect(exists, isTrue);
         expect(
           messages.last,
@@ -234,10 +237,15 @@ dependencies:
 
       test('should return false if dependency does not exist', () async {
         final workspaceDir = tempDir;
+        final dependencyDir =
+            Directory(p.join(workspaceDir.path, 'dependency3'));
         const dependencyName = 'dependency1';
 
-        final exists =
-            await dependencyExists(workspaceDir, dependencyName, messages.add);
+        final exists = await dependencyExists(
+          dependencyDir,
+          dependencyName,
+          ggLog: messages.add,
+        );
         expect(exists, isFalse);
       });
     });

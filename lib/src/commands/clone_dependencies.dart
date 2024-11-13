@@ -95,23 +95,34 @@ class CloneDependencies extends DirCommand<dynamic> {
       }
       processedNodes.add(dependency);
 
+      Directory dependencyDir = getProjectDir(dependency, workspaceDir) ??
+          Directory('${workspaceDir.path}/$dependency');
+
       // check if dependency already exists
-      if (await dependencyExists(workspaceDir, dependency, ggLog)) {
-        continue;
-      }
+      bool exists =
+          await dependencyExists(dependencyDir, dependency, ggLog: ggLog);
 
       // check if dependency is on github
       bool isOnGithub = await mockCheckGithubOrigin(workspaceDir, dependency);
-      if (!isOnGithub) {
+
+      // clone dependency
+      if (!exists && isOnGithub) {
+        await mockCloneDependency(workspaceDir, dependency, ggLog);
+      }
+
+      dependencyDir = getProjectDir(dependency, workspaceDir) ??
+          Directory('${workspaceDir.path}/$dependency');
+
+      // check if dependency exists after cloning
+      bool existsAfterCloning =
+          await dependencyExists(dependencyDir, dependency);
+
+      if (!existsAfterCloning) {
         continue;
       }
 
-      // clone dependency
-      await mockCloneDependency(workspaceDir, dependency, ggLog);
-
       // execute cloneDependencies for dependency
-      projectDirs[dependency] = getProjectDir(dependency, workspaceDir) ??
-          Directory('${workspaceDir.path}/$dependency');
+      projectDirs[dependency] = dependencyDir;
       await cloneDependencies(
         workspaceDir,
         dependency,
@@ -151,13 +162,12 @@ Future<List<String>> getDependencies(Directory projectDir) async {
 // ...........................................................................
 /// Check if the dependency already exists in the workspace
 Future<bool> dependencyExists(
-  Directory workspaceDir,
-  String dependency,
-  GgLog ggLog,
-) async {
-  final dependencyDir = Directory('${workspaceDir.path}/$dependency');
+  Directory dependencyDir,
+  String dependency, {
+  GgLog? ggLog,
+}) async {
   if (await dependencyDir.exists()) {
-    ggLog(yellow('Dependency $dependency already exists in workspace.'));
+    ggLog?.call(yellow('Dependency $dependency already exists in workspace.'));
     return true;
   }
   return false;
