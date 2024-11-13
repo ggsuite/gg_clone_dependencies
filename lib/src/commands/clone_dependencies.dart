@@ -12,7 +12,7 @@ import 'package:gg_project_root/gg_project_root.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 
 // #############################################################################
-/// An example command
+/// Clone all dependencies of the project
 class CloneDependencies extends DirCommand<dynamic> {
   /// Constructor
   CloneDependencies({
@@ -22,7 +22,7 @@ class CloneDependencies extends DirCommand<dynamic> {
           description: 'Clones all dependencies to the current workspace',
         );
 
-  ///
+  /// Mock for the checkGithubOrigin function
   Future<bool> Function(
     Directory,
     String, {
@@ -33,7 +33,7 @@ class CloneDependencies extends DirCommand<dynamic> {
     })? processRun,
   }) mockCheckGithubOrigin = checkGithubOrigin;
 
-  ///
+  /// Mock for the cloneDependency function
   Future<void> Function(
     Directory,
     String,
@@ -58,53 +58,36 @@ class CloneDependencies extends DirCommand<dynamic> {
     }
 
     Directory projectDir = correctDir(Directory(root));
+    String packageName = getPackageName(projectDir);
 
     // get the workspace directory
     Directory workspaceDir = projectDir.parent;
 
-    Set<String> dependencies = <String>{};
+    Set<String> processedNodes = <String>{};
+    Map<String, Directory> projectDirs = {packageName: projectDir};
 
-    await cloneDependencies(workspaceDir, projectDir, dependencies, ggLog);
+    await cloneDependencies(
+      workspaceDir,
+      packageName,
+      projectDirs,
+      processedNodes,
+      ggLog,
+    );
   }
 
   // ...........................................................................
-  /// Process the node
+  /// Clone all dependencies of the project
   Future<void> cloneDependencies(
     Directory workspaceDir,
-    Directory projectDir,
+    String packageName,
+    Map<String, Directory> projectDirs,
     Set<String> processedNodes,
     GgLog ggLog,
   ) async {
-    projectDir = correctDir(projectDir);
-    final pubspec = File('${projectDir.path}/pubspec.yaml');
-
-    if (!pubspec.existsSync()) {
-      return;
-    }
-
-    final pubspecContent = await pubspec.readAsString();
-
-    late Pubspec pubspecYaml;
-    try {
-      pubspecYaml = Pubspec.parse(pubspecContent);
-    } catch (e) {
-      throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
-    }
-
-    /*// Load the YAML content as a Map
-    final yamlMap = loadYaml(pubspecContent) as Map;
-
-    // Check if the 'dependencies' section exists
-    if (!yamlMap.containsKey('dependencies') &&
-        !yamlMap.containsKey('dev_dependencies')) {
-      return;
-    }*/
+    final projectDir = correctDir(projectDirs[packageName]!);
 
     // Iterate all dependencies
-    final keys = [
-      ...pubspecYaml.dependencies.keys,
-      ...pubspecYaml.devDependencies.keys,
-    ];
+    final keys = await getDependencies(projectDir);
 
     for (final dependency in keys) {
       if (processedNodes.contains(dependency)) {
@@ -127,15 +110,42 @@ class CloneDependencies extends DirCommand<dynamic> {
       await mockCloneDependency(workspaceDir, dependency, ggLog);
 
       // execute cloneDependencies for dependency
-      final dependencyDir = Directory('${workspaceDir.path}/$dependency');
+      projectDirs[dependency] = getProjectDir(dependency, workspaceDir) ??
+          Directory('${workspaceDir.path}/$dependency');
       await cloneDependencies(
         workspaceDir,
-        dependencyDir,
+        dependency,
+        projectDirs,
         processedNodes,
         ggLog,
       );
     }
   }
+}
+
+// ...........................................................................
+/// Get the dependencies from the pubspec.yaml file
+Future<List<String>> getDependencies(Directory projectDir) async {
+  final pubspec = File('${projectDir.path}/pubspec.yaml');
+
+  if (!pubspec.existsSync()) {
+    return [];
+  }
+
+  final pubspecContent = await pubspec.readAsString();
+
+  late Pubspec pubspecYaml;
+  try {
+    pubspecYaml = Pubspec.parse(pubspecContent);
+  } catch (e) {
+    throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
+  }
+
+  // Iterate all dependencies
+  return [
+    ...pubspecYaml.dependencies.keys,
+    ...pubspecYaml.devDependencies.keys,
+  ];
 }
 
 // ...........................................................................
@@ -230,7 +240,11 @@ Directory correctDir(Directory directory) {
 
 // ...........................................................................
 /// Get the package name from the pubspec.yaml file
-String getPackageName(String pubspecContent) {
+String getPackageName(Directory projectDir) {
+  final pubspec = File('${projectDir.path}/pubspec.yaml');
+
+  final pubspecContent = pubspec.readAsStringSync();
+
   late Pubspec pubspecYaml;
   try {
     pubspecYaml = Pubspec.parse(pubspecContent);
@@ -239,4 +253,22 @@ String getPackageName(String pubspecContent) {
   }
 
   return pubspecYaml.name;
+}
+
+// ...........................................................................
+/// Get the project directory
+Directory? getProjectDir(String packageName, Directory workspaceDir) {
+  for (final entity in workspaceDir.listSync()) {
+    if (entity is! Directory) {
+      continue;
+    }
+    final pubspec = File('${entity.path}/pubspec.yaml');
+    if (!pubspec.existsSync()) {
+      continue;
+    }
+    if (getPackageName(entity) == packageName) {
+      return entity;
+    }
+  }
+  return null;
 }

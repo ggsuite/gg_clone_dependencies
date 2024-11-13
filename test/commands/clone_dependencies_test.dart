@@ -20,6 +20,13 @@ void main() {
   late CommandRunner<void> runner;
 
   Directory tempDir = Directory('');
+  Directory dParseError = Directory('');
+  Directory dWorkspaceSuccess = Directory('');
+  Directory dCorrectYaml = Directory('');
+  Directory dInvalidYaml = Directory('');
+  Directory dInvalidYamlGetDependencies = Directory('');
+  Directory dGetProjectDirWorkspace = Directory('');
+  Directory dGetProjectDirNonExistentWorkspace = Directory('');
 
   setUp(() async {
     messages.clear();
@@ -28,12 +35,28 @@ void main() {
     runner.addCommand(myCommand);
 
     tempDir = createTempDir('clone_dependencies_test');
+    dParseError = createTempDir('parse_error', 'project');
+    dWorkspaceSuccess = createTempDir('success');
+    dCorrectYaml = createTempDir('correct_yaml', 'project');
+    dInvalidYaml = createTempDir('invalid_yaml', 'project');
+    dInvalidYamlGetDependencies =
+        createTempDir('invalid_yaml_get_dependencies');
+    dGetProjectDirWorkspace = createTempDir('get_project_dir');
+    dGetProjectDirNonExistentWorkspace =
+        createTempDir('get_project_dir_non_existent');
   });
 
   tearDown(() async {
     deleteDirs(
       [
         tempDir,
+        dParseError,
+        dWorkspaceSuccess,
+        dCorrectYaml,
+        dInvalidYaml,
+        dInvalidYamlGetDependencies,
+        dGetProjectDirWorkspace,
+        dGetProjectDirNonExistentWorkspace,
       ],
     );
   });
@@ -70,13 +93,11 @@ void main() {
 
       test('should throw when pubspec.yaml cannot be parsed', () async {
         // Create a pubspec.yaml with invalid content in tempDir
-        final projectDir = Directory(p.join(tempDir.path, 'project'));
-        await projectDir.create(recursive: true);
-        await File(p.join(projectDir.path, 'pubspec.yaml'))
+        await File(p.join(dParseError.path, 'pubspec.yaml'))
             .writeAsString('invalid yaml');
 
         await expectLater(
-          runner.run(['clone-dependencies', '--input', projectDir.path]),
+          runner.run(['clone-dependencies', '--input', dParseError.path]),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
@@ -89,8 +110,8 @@ void main() {
 
       test('should succeed and clone dependencies', () async {
         // Set up a mock workspace with projects and dependencies
-        final workspaceDir = tempDir;
-        final projectDir = Directory(p.join(workspaceDir.path, 'project1'));
+        final projectDir =
+            Directory(p.join(dWorkspaceSuccess.path, 'project1'));
         const dependencyName = 'dependency1';
 
         // Create the project directory
@@ -105,7 +126,7 @@ dependencies:
 
         // Mock the checkGithubOrigin function to always return true
         Future<bool> mockCheckGithubOrigin(
-          Directory workspaceDir,
+          Directory dWorkspaceSuccess,
           String packageName, {
           Future<ProcessResult> Function(
             String,
@@ -118,7 +139,7 @@ dependencies:
 
         // Mock the cloneDependency function to simulate cloning
         Future<void> mockCloneDependency(
-          Directory workspaceDir,
+          Directory dWorkspaceSuccess,
           String dependency,
           GgLog ggLog, {
           Future<ProcessResult> Function(
@@ -129,7 +150,7 @@ dependencies:
         }) async {
           ggLog('Simulating cloning $dependency into workspace...');
           final dependencyDir =
-              Directory(p.join(workspaceDir.path, dependency));
+              Directory(p.join(dWorkspaceSuccess.path, dependency));
           if (!await dependencyDir.exists()) {
             await dependencyDir.create(recursive: true);
           }
@@ -157,7 +178,7 @@ dependencies:
 
         // Verify that the dependency was "cloned"
         final clonedDependencyDir =
-            Directory(p.join(workspaceDir.path, 'dependency1'));
+            Directory(p.join(dWorkspaceSuccess.path, 'dependency1'));
         expect(await clonedDependencyDir.exists(), isTrue);
       });
 
@@ -389,14 +410,20 @@ version: 1.0.0
 dependencies:
   dependency1: ^1.0.0
 ''';
-      final packageName = getPackageName(pubspecContent);
+      File pFile = File(p.join(dCorrectYaml.path, 'pubspec.yaml'));
+      pFile.writeAsStringSync(pubspecContent);
+
+      final packageName = getPackageName(dCorrectYaml);
       expect(packageName, equals('test_package'));
     });
 
     test('getPackageName should throw if pubspec.yaml cannot be parsed', () {
       const pubspecContent = 'invalid yaml';
+      File pFile = File(p.join(dInvalidYaml.path, 'pubspec.yaml'));
+      pFile.writeAsStringSync(pubspecContent);
+
       expect(
-        () => getPackageName(pubspecContent),
+        () => getPackageName(dInvalidYaml),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -405,6 +432,49 @@ dependencies:
           ),
         ),
       );
+    });
+
+    test('getDependencies should throw if pubspec.yaml cannot be parsed', () {
+      const pubspecContent = 'invalid yaml';
+      File pFile =
+          File(p.join(dInvalidYamlGetDependencies.path, 'pubspec.yaml'));
+      pFile.writeAsStringSync(pubspecContent);
+
+      expect(
+        () => getDependencies(dInvalidYamlGetDependencies),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Error parsing pubspec.yaml'),
+          ),
+        ),
+      );
+    });
+
+    group('getProjectDir', () {
+      test('should return the correct project directory if it exists', () {
+        Directory projectDir =
+            Directory(p.join(dGetProjectDirWorkspace.path, 'project1'));
+        projectDir.createSync(recursive: true);
+        File(p.join(projectDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: project1
+version: 1.0.0
+dependencies:
+  dependency1: ^1.0.0
+  ''');
+        final result = getProjectDir('project1', dGetProjectDirWorkspace);
+        expect(result, isNotNull);
+        expect(result!.path, equals(projectDir.path));
+      });
+
+      test('should return null if the project directory does not exist', () {
+        final result = getProjectDir(
+          'non_existent_project',
+          dGetProjectDirNonExistentWorkspace,
+        );
+        expect(result, isNull);
+      });
     });
   });
 }
