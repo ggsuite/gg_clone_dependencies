@@ -22,6 +22,7 @@ void main() {
   Directory tempDir = Directory('');
   Directory dParseError = Directory('');
   Directory dWorkspaceSuccess = Directory('');
+  Directory dWorkspaceNoRepository = Directory('');
   Directory dCorrectYaml = Directory('');
   Directory dInvalidYaml = Directory('');
   Directory dInvalidYamlGetDependencies = Directory('');
@@ -37,6 +38,7 @@ void main() {
     tempDir = createTempDir('clone_dependencies_test');
     dParseError = createTempDir('parse_error', 'project');
     dWorkspaceSuccess = createTempDir('success');
+    dWorkspaceNoRepository = createTempDir('no_repository');
     dCorrectYaml = createTempDir('correct_yaml', 'project');
     dInvalidYaml = createTempDir('invalid_yaml', 'project');
     dInvalidYamlGetDependencies =
@@ -52,6 +54,7 @@ void main() {
         tempDir,
         dParseError,
         dWorkspaceSuccess,
+        dWorkspaceNoRepository,
         dCorrectYaml,
         dInvalidYaml,
         dInvalidYamlGetDependencies,
@@ -112,6 +115,39 @@ void main() {
         // Set up a mock workspace with projects and dependencies
         final projectDir =
             Directory(p.join(dWorkspaceSuccess.path, 'project1'));
+        const dependencyName = 'http';
+
+        // Create the project directory
+        await projectDir.create(recursive: true);
+        // Create a pubspec.yaml for the project
+        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  $dependencyName: ^1.0.0
+''');
+
+        final myCommand = GithubActionsMock(ggLog: messages.add);
+
+        // Run the command
+        await myCommand.get(directory: projectDir, ggLog: messages.add);
+
+        expect(messages[0], contains('Running clone-dependencies in'));
+        expect(
+          messages[1],
+          contains('Simulating cloning $dependencyName into workspace...'),
+        );
+
+        // Verify that the dependency was "cloned"
+        final clonedDependencyDir =
+            Directory(p.join(dWorkspaceSuccess.path, dependencyName));
+        expect(await clonedDependencyDir.exists(), isTrue);
+      });
+
+      test('should succeed and print when repository does not exist', () async {
+        // Set up a mock workspace with projects and dependencies
+        final projectDir =
+            Directory(p.join(dWorkspaceNoRepository.path, 'project1'));
         const dependencyName = 'dependency1';
 
         // Create the project directory
@@ -124,48 +160,7 @@ dependencies:
   $dependencyName: ^1.0.0
 ''');
 
-        // Mock the checkGithubOrigin function to always return true
-        Future<bool> mockCheckGithubOrigin(
-          Directory dWorkspaceSuccess,
-          String packageName, {
-          Future<ProcessResult> Function(
-            String,
-            List<String>, {
-            String? workingDirectory,
-          })? processRun,
-        }) async {
-          return true;
-        }
-
-        // Mock the cloneDependency function to simulate cloning
-        Future<void> mockCloneDependency(
-          Directory dWorkspaceSuccess,
-          String dependency,
-          GgLog ggLog, {
-          Future<ProcessResult> Function(
-            String,
-            List<String>, {
-            String? workingDirectory,
-          })? processRun,
-        }) async {
-          ggLog('Simulating cloning $dependency into workspace...');
-          final dependencyDir =
-              Directory(p.join(dWorkspaceSuccess.path, dependency));
-          if (!await dependencyDir.exists()) {
-            await dependencyDir.create(recursive: true);
-          }
-          // Simulate initializing a git repository
-          await Process.run(
-            'git',
-            ['init'],
-            workingDirectory: dependencyDir.path,
-          );
-        }
-
-        // Create an instance of the command with mocked functions
-        final myCommand = CloneDependencies(ggLog: messages.add)
-          ..mockCheckGithubOrigin = mockCheckGithubOrigin
-          ..mockCloneDependency = mockCloneDependency;
+        final myCommand = GithubActionsMock(ggLog: messages.add);
 
         // Run the command
         await myCommand.get(directory: projectDir, ggLog: messages.add);
@@ -173,13 +168,16 @@ dependencies:
         expect(messages[0], contains('Running clone-dependencies in'));
         expect(
           messages[1],
-          contains('Simulating cloning dependency1 into workspace...'),
+          contains(
+            'Dependency dependency1 does not '
+            'have a repository url and cannot be cloned.',
+          ),
         );
 
-        // Verify that the dependency was "cloned"
+        // Verify that the dependency was not cloned
         final clonedDependencyDir =
             Directory(p.join(dWorkspaceSuccess.path, 'dependency1'));
-        expect(await clonedDependencyDir.exists(), isTrue);
+        expect(await clonedDependencyDir.exists(), isFalse);
       });
 
       test('should skip cloning if dependency already exists', () async {
@@ -268,7 +266,8 @@ dependencies:
         final workspaceDir = tempDir;
         const packageName = 'dependency1';
 
-        final result = await checkGithubOrigin(
+        final result =
+            await CloneDependencies(ggLog: messages.add).checkGithubOrigin(
           workspaceDir,
           packageName,
           processRun: mockProcessRun,
@@ -294,7 +293,8 @@ dependencies:
         final workspaceDir = tempDir;
         const packageName = 'dependency1';
 
-        final result = await checkGithubOrigin(
+        final result =
+            await CloneDependencies(ggLog: messages.add).checkGithubOrigin(
           workspaceDir,
           packageName,
           processRun: mockProcessRun,
@@ -320,7 +320,7 @@ dependencies:
         const packageName = 'dependency1';
 
         await expectLater(
-          checkGithubOrigin(
+          CloneDependencies(ggLog: messages.add).checkGithubOrigin(
             workspaceDir,
             packageName,
             processRun: mockProcessRun,
@@ -354,9 +354,10 @@ dependencies:
         final workspaceDir = tempDir;
         const dependencyName = 'dependency1';
 
-        await cloneDependency(
+        await CloneDependencies(ggLog: messages.add).cloneDependency(
           workspaceDir,
           dependencyName,
+          'git@github.com:inlavigo/$dependencyName.git',
           messages.add,
           processRun: mockProcessRun,
         );
@@ -384,9 +385,10 @@ dependencies:
         const dependencyName = 'dependency1';
 
         await expectLater(
-          cloneDependency(
+          CloneDependencies(ggLog: messages.add).cloneDependency(
             workspaceDir,
             dependencyName,
+            'git@github.com:inlavigo/$dependencyName.git',
             messages.add,
             processRun: mockProcessRun,
           ),
@@ -485,4 +487,48 @@ dependencies:
       });
     });
   });
+}
+
+class GithubActionsMock extends CloneDependencies {
+  GithubActionsMock({
+    required super.ggLog,
+  });
+
+  @override
+  Future<bool> checkGithubOrigin(
+    Directory workspaceDir,
+    String repositoryUrl, {
+    Future<ProcessResult> Function(
+      String,
+      List<String>, {
+      String? workingDirectory,
+    })? processRun,
+  }) async {
+    return true;
+  }
+
+  @override
+  Future<void> cloneDependency(
+    Directory workspaceDir,
+    String dependency,
+    String repositoryUrl,
+    GgLog ggLog, {
+    Future<ProcessResult> Function(
+      String,
+      List<String>, {
+      String? workingDirectory,
+    })? processRun,
+  }) async {
+    ggLog('Simulating cloning $dependency into workspace...');
+    final dependencyDir = Directory(p.join(workspaceDir.path, dependency));
+    if (!await dependencyDir.exists()) {
+      await dependencyDir.create(recursive: true);
+    }
+    // Simulate initializing a git repository
+    await Process.run(
+      'git',
+      ['init'],
+      workingDirectory: dependencyDir.path,
+    );
+  }
 }

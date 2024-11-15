@@ -10,6 +10,8 @@ import 'package:gg_log/gg_log.dart';
 import 'dart:io';
 import 'package:gg_project_root/gg_project_root.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 // #############################################################################
 /// Clone all dependencies of the project
@@ -21,29 +23,6 @@ class CloneDependencies extends DirCommand<dynamic> {
           name: 'clone-dependencies',
           description: 'Clones all dependencies to the current workspace',
         );
-
-  /// Mock for the checkGithubOrigin function
-  Future<bool> Function(
-    Directory,
-    String, {
-    Future<ProcessResult> Function(
-      String,
-      List<String>, {
-      String? workingDirectory,
-    })? processRun,
-  }) mockCheckGithubOrigin = checkGithubOrigin;
-
-  /// Mock for the cloneDependency function
-  Future<void> Function(
-    Directory,
-    String,
-    GgLog, {
-    Future<ProcessResult> Function(
-      String,
-      List<String>, {
-      String? workingDirectory,
-    })? processRun,
-  }) mockCloneDependency = cloneDependency;
 
   // ...........................................................................
   @override
@@ -102,23 +81,43 @@ class CloneDependencies extends DirCommand<dynamic> {
       bool exists =
           await dependencyExists(dependencyDir, dependency, ggLog: ggLog);
 
-      // check if dependency is on github
-      bool isOnGithub = await mockCheckGithubOrigin(workspaceDir, dependency);
+      if (!exists) {
+        // get the repository url
+        String? repositoryUrl = await getRepositoryUrl(dependency);
 
-      // clone dependency
-      if (!exists && isOnGithub) {
-        await mockCloneDependency(workspaceDir, dependency, ggLog);
-      }
+        if (repositoryUrl == null) {
+          ggLog.call(
+            yellow(
+              'Dependency $dependency does not have a '
+              'repository url and cannot be cloned.',
+            ),
+          );
+          continue;
+        }
 
-      dependencyDir = getProjectDir(dependency, workspaceDir) ??
-          Directory('${workspaceDir.path}/$dependency');
+        // check if dependency is on github
+        bool isOnGithub = await checkGithubOrigin(workspaceDir, repositoryUrl);
 
-      // check if dependency exists after cloning
-      bool existsAfterCloning =
-          await dependencyExists(dependencyDir, dependency);
+        // clone dependency
+        if (isOnGithub) {
+          await cloneDependency(
+            workspaceDir,
+            dependency,
+            repositoryUrl,
+            ggLog,
+          );
 
-      if (!existsAfterCloning) {
-        continue;
+          dependencyDir = getProjectDir(dependency, workspaceDir) ??
+              Directory('${workspaceDir.path}/$dependency');
+
+          // check if dependency exists after cloning
+          bool existsAfterCloning =
+              await dependencyExists(dependencyDir, dependency);
+
+          if (!existsAfterCloning) {
+            continue;
+          }
+        }
       }
 
       // execute cloneDependencies for dependency
@@ -132,24 +131,94 @@ class CloneDependencies extends DirCommand<dynamic> {
       );
     }
   }
+
+  // ...........................................................................
+  /// Check if the dependency exists on github
+  Future<bool> checkGithubOrigin(
+    Directory workspaceDir,
+    String repositoryUrl, {
+    Future<ProcessResult> Function(
+      String,
+      List<String>, {
+      String? workingDirectory,
+    })? processRun,
+  }) async {
+    processRun ??= Process.run;
+
+    final result = await processRun(
+      'git',
+      ['ls-remote', repositoryUrl, 'origin'],
+      workingDirectory: workspaceDir.path,
+    );
+
+    // coverage:ignore-start
+    if (result.exitCode == 128) {
+      return false;
+    } else if (result.exitCode != 0) {
+      throw Exception(
+          'Error while running "git ls-remote $repositoryUrl origin".\n'
+          'Exit code: ${result.exitCode}\n'
+          'Error: ${result.stderr}\n');
+    } else {
+      return true;
+    }
+    // coverage:ignore-end
+  }
+
+  // ...........................................................................
+  /// Clone the dependency from GitHub
+  Future<void> cloneDependency(
+    Directory workspaceDir,
+    String dependency,
+    String repositoryUrl,
+    GgLog ggLog, {
+    Future<ProcessResult> Function(
+      String,
+      List<String>, {
+      String? workingDirectory,
+    })? processRun,
+  }) async {
+    processRun ??= Process.run;
+
+    ggLog('Cloning $dependency into workspace...');
+    final cloneResult = await processRun(
+      'git',
+      ['clone', repositoryUrl],
+      workingDirectory: workspaceDir.path,
+    );
+
+    if (cloneResult.exitCode != 0) {
+      throw Exception(
+        'Failed to clone $dependency. Exit code: ${cloneResult.exitCode}',
+      );
+    }
+  }
 }
+
+Map<File, Pubspec> _pubspecCache = {};
 
 // ...........................................................................
 /// Get the dependencies from the pubspec.yaml file
 Future<List<String>> getDependencies(Directory projectDir) async {
   final pubspec = File('${projectDir.path}/pubspec.yaml');
 
-  if (!pubspec.existsSync()) {
-    return [];
-  }
-
-  final pubspecContent = await pubspec.readAsString();
-
   late Pubspec pubspecYaml;
-  try {
-    pubspecYaml = Pubspec.parse(pubspecContent);
-  } catch (e) {
-    throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
+
+  if (_pubspecCache.containsKey(pubspec)) {
+    pubspecYaml = _pubspecCache[pubspec]!;
+  } else {
+    if (!pubspec.existsSync()) {
+      return [];
+    }
+
+    final pubspecContent = await pubspec.readAsString();
+
+    try {
+      pubspecYaml = Pubspec.parse(pubspecContent);
+      _pubspecCache[pubspec] = pubspecYaml;
+    } catch (e) {
+      throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
+    }
   }
 
   // Iterate all dependencies
@@ -174,68 +243,6 @@ Future<bool> dependencyExists(
 }
 
 // ...........................................................................
-/// Clone the dependency from GitHub
-Future<void> cloneDependency(
-  Directory workspaceDir,
-  String dependency,
-  GgLog ggLog, {
-  Future<ProcessResult> Function(
-    String,
-    List<String>, {
-    String? workingDirectory,
-  })? processRun,
-}) async {
-  processRun ??= Process.run;
-
-  ggLog('Cloning $dependency into workspace...');
-  final cloneResult = await processRun(
-    'git',
-    ['clone', 'git@github.com:inlavigo/$dependency.git'],
-    workingDirectory: workspaceDir.path,
-  );
-
-  if (cloneResult.exitCode != 0) {
-    throw Exception(
-      'Failed to clone $dependency. Exit code: ${cloneResult.exitCode}',
-    );
-  }
-}
-
-// ...........................................................................
-/// Check if the dependency exists on github
-Future<bool> checkGithubOrigin(
-  Directory workspaceDir,
-  String packageName, {
-  Future<ProcessResult> Function(
-    String,
-    List<String>, {
-    String? workingDirectory,
-  })? processRun,
-}) async {
-  processRun ??= Process.run;
-
-  final repo = 'git@github.com:inlavigo/$packageName.git';
-
-  final result = await processRun(
-    'git',
-    ['ls-remote', repo, 'origin'],
-    workingDirectory: workspaceDir.path,
-  );
-
-  // coverage:ignore-start
-  if (result.exitCode == 128) {
-    return false;
-  } else if (result.exitCode != 0) {
-    throw Exception('Error while running "git ls-remote $repo origin".\n'
-        'Exit code: ${result.exitCode}\n'
-        'Error: ${result.stderr}\n');
-  } else {
-    return true;
-  }
-  // coverage:ignore-end
-}
-
-// ...........................................................................
 /// Helper method to correct a directory
 Directory correctDir(Directory directory) {
   if (directory.path.endsWith('\\.') || directory.path.endsWith('/.')) {
@@ -250,19 +257,48 @@ Directory correctDir(Directory directory) {
 
 // ...........................................................................
 /// Get the package name from the pubspec.yaml file
-String getPackageName(Directory projectDir) {
+String getPackageName(Directory projectDir) => getPubspecYaml(projectDir).name;
+
+// ...........................................................................
+/// Fetches the GitHub repository URL of a package from pub.dev.
+///
+/// Returns `null` if the package does not
+/// exist or the repository URL is not available.
+Future<String?> getRepositoryUrl(String packageName) async {
+  final url = 'https://pub.dev/api/packages/$packageName';
+  final response = await http.get(Uri.parse(url));
+
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    final repositoryUrl = data['latest']['pubspec']['repository'] as String?;
+    return repositoryUrl;
+  } else {
+    // Package not found or an error occurred.
+    return null;
+  }
+}
+
+// ...........................................................................
+/// Get the pubspec.yaml file
+Pubspec getPubspecYaml(Directory projectDir) {
   final pubspec = File('${projectDir.path}/pubspec.yaml');
 
-  final pubspecContent = pubspec.readAsStringSync();
-
   late Pubspec pubspecYaml;
-  try {
-    pubspecYaml = Pubspec.parse(pubspecContent);
-  } catch (e) {
-    throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
+
+  if (_pubspecCache.containsKey(pubspec)) {
+    pubspecYaml = _pubspecCache[pubspec]!;
+  } else {
+    final pubspecContent = pubspec.readAsStringSync();
+
+    try {
+      pubspecYaml = Pubspec.parse(pubspecContent);
+      _pubspecCache[pubspec] = pubspecYaml;
+    } catch (e) {
+      throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
+    }
   }
 
-  return pubspecYaml.name;
+  return pubspecYaml;
 }
 
 // ...........................................................................
@@ -273,7 +309,7 @@ Directory? getProjectDir(String packageName, Directory workspaceDir) {
       continue;
     }
     final pubspec = File('${entity.path}/pubspec.yaml');
-    if (!pubspec.existsSync()) {
+    if (!_pubspecCache.containsKey(pubspec) && !pubspec.existsSync()) {
       continue;
     }
     if (getPackageName(entity) == packageName) {
