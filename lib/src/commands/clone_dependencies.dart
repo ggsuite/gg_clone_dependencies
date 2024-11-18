@@ -200,26 +200,11 @@ Map<File, Pubspec> _pubspecCache = {};
 // ...........................................................................
 /// Get the dependencies from the pubspec.yaml file
 Future<List<String>> getDependencies(Directory projectDir) async {
-  final pubspec = File('${projectDir.path}/pubspec.yaml');
-
-  late Pubspec pubspecYaml;
-
-  if (_pubspecCache.containsKey(pubspec)) {
-    pubspecYaml = _pubspecCache[pubspec]!;
-  } else {
-    if (!pubspec.existsSync()) {
-      return [];
-    }
-
-    final pubspecContent = await pubspec.readAsString();
-
-    try {
-      pubspecYaml = Pubspec.parse(pubspecContent);
-      _pubspecCache[pubspec] = pubspecYaml;
-    } catch (e) {
-      throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
-    }
+  if (!pubspecExists(projectDir)) {
+    return [];
   }
+
+  Pubspec pubspecYaml = getPubspecYaml(projectDir);
 
   // Iterate all dependencies
   return [
@@ -283,23 +268,29 @@ Future<String?> getRepositoryUrl(String packageName) async {
 Pubspec getPubspecYaml(Directory projectDir) {
   final pubspec = File('${projectDir.path}/pubspec.yaml');
 
-  late Pubspec pubspecYaml;
-
+  // coverage:ignore-start
   if (_pubspecCache.containsKey(pubspec)) {
-    pubspecYaml = _pubspecCache[pubspec]!;
-  } else {
-    final pubspecContent = pubspec.readAsStringSync();
+    return _pubspecCache[pubspec]!;
+  }
+  // coverage:ignore-end
 
-    try {
-      pubspecYaml = Pubspec.parse(pubspecContent);
-      _pubspecCache[pubspec] = pubspecYaml;
-    } catch (e) {
-      throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
-    }
+  late Pubspec pubspecYaml;
+  final pubspecContent = pubspec.readAsStringSync();
+
+  try {
+    pubspecYaml = Pubspec.parse(pubspecContent);
+    _pubspecCache[pubspec] = pubspecYaml;
+  } catch (e) {
+    throw Exception(red('Error parsing pubspec.yaml:') + e.toString());
   }
 
   return pubspecYaml;
 }
+
+// ...........................................................................
+/// Check if the pubspec.yaml file exists
+bool pubspecExists(Directory projectDir) =>
+    File('${projectDir.path}/pubspec.yaml').existsSync();
 
 // ...........................................................................
 /// Get the project directory
