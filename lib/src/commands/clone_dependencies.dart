@@ -22,7 +22,68 @@ class CloneDependencies extends DirCommand<dynamic> {
   }) : super(
           name: 'clone-dependencies',
           description: 'Clones all dependencies to the current workspace',
-        );
+        ) {
+    _addArgs();
+  }
+
+  // ...........................................................................
+  void _addArgs() {
+    argParser.addFlag(
+      'all',
+      abbr: 'a',
+      help: 'Clone all dependencies of the project.',
+      defaultsTo: true,
+      negatable: false,
+    );
+    argParser.addFlag(
+      'direct',
+      abbr: 'd',
+      help: 'Clone only direct dependencies of the project.',
+      defaultsTo: false,
+      negatable: false,
+    );
+    argParser.addFlag(
+      'checkout-main',
+      help: 'Always checkout the main branch of the dependencies.',
+      defaultsTo: true,
+      negatable: false,
+    );
+    argParser.addOption(
+      'target',
+      help: 'The target directory to clone the dependencies to.',
+      defaultsTo: '.',
+    );
+    argParser.addMultiOption(
+      'exclude',
+      help: 'Exclude dependencies from cloning.',
+      defaultsTo: ['flutter'],
+    );
+  }
+
+  // ...........................................................................
+  /// Returns the directory from the command line arguments
+  Directory? get targetFromArgs =>
+      argResults?['target'] == null || (argResults?['target'] as String?) == '.'
+          ? null
+          : Directory(argResults?['target'] as String? ?? '.');
+
+  // ...........................................................................
+  /// Returns the exclude list from the command line arguments
+  List<String> get excludeFromArgs =>
+      argResults?['exclude'] as List<String>? ?? ['flutter'];
+
+  // ...........................................................................
+  /// Returns the all flag from the command line arguments
+  bool get allFromArgs => argResults?['all'] as bool? ?? true;
+
+  // ...........................................................................
+  /// Returns the direct flag from the command line arguments
+  bool get directFromArgs => argResults?['direct'] as bool? ?? false;
+
+  // ...........................................................................
+  /// Returns the checkout-main flag from the command line arguments
+  //bool get checkoutMainFromArgs =>
+  //    argResults?['checkout-main'] as bool? ?? true;
 
   // ...........................................................................
   @override
@@ -40,7 +101,7 @@ class CloneDependencies extends DirCommand<dynamic> {
     String packageName = getPackageName(projectDir);
 
     // get the workspace directory
-    Directory workspaceDir = projectDir.parent;
+    Directory workspaceDir = targetFromArgs ?? projectDir.parent;
 
     Set<String> processedNodes = <String>{};
     Map<String, Directory> projectDirs = {packageName: projectDir};
@@ -70,6 +131,10 @@ class CloneDependencies extends DirCommand<dynamic> {
 
     for (MapEntry<String, Dependency> dependency in keys) {
       String dependencyName = dependency.key;
+
+      if (excludeFromArgs.contains(dependencyName)) {
+        continue;
+      }
 
       if (processedNodes.contains(dependencyName)) {
         continue;
@@ -147,13 +212,20 @@ class CloneDependencies extends DirCommand<dynamic> {
 
       // execute cloneDependencies for dependency
       projectDirs[dependencyName] = dependencyDir;
-      await cloneDependencies(
-        workspaceDir,
-        dependencyName,
-        projectDirs,
-        processedNodes,
-        ggLog,
-      );
+
+      if (directFromArgs) {
+        continue;
+      }
+
+      if (allFromArgs) {
+        await cloneDependencies(
+          workspaceDir,
+          dependencyName,
+          projectDirs,
+          processedNodes,
+          ggLog,
+        );
+      }
     }
   }
 

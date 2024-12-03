@@ -33,6 +33,15 @@ Directory createTempDir(String suffix, [String? folderName]) {
   return newDir;
 }
 
+Directory createSubdir(Directory parent, String name) {
+  Directory dir = Directory(join(parent.path, name));
+  if (!dir.existsSync()) {
+    dir.createSync(recursive: true);
+  }
+  expect(dir.existsSync(), isTrue);
+  return dir;
+}
+
 void deleteDirs(List<Directory> dirs) {
   for (final dir in dirs) {
     if (dir.existsSync()) {
