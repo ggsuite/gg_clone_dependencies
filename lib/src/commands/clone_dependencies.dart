@@ -68,27 +68,52 @@ class CloneDependencies extends DirCommand<dynamic> {
     // Iterate all dependencies
     final keys = await getDependencies(projectDir);
 
-    for (final dependency in keys) {
-      if (processedNodes.contains(dependency)) {
+    for (MapEntry<String, Dependency> dependency in keys) {
+      String dependencyName = dependency.key;
+
+      if (processedNodes.contains(dependencyName)) {
         continue;
       }
-      processedNodes.add(dependency);
+      processedNodes.add(dependencyName);
 
-      Directory dependencyDir = getProjectDir(dependency, workspaceDir) ??
-          Directory('${workspaceDir.path}/$dependency');
+      Directory dependencyDir = getProjectDir(dependencyName, workspaceDir) ??
+          Directory('${workspaceDir.path}/$dependencyName');
 
       // check if dependency already exists
       bool exists =
-          await dependencyExists(dependencyDir, dependency, ggLog: ggLog);
+          await dependencyExists(dependencyDir, dependencyName, ggLog: ggLog);
 
       if (!exists) {
         // get the repository url
-        String? repositoryUrl = await getRepositoryUrl(dependency);
+        String? repositoryUrl;
+        if (dependency.value is HostedDependency) {
+          repositoryUrl = await getRepositoryUrl(dependencyName);
+        } else if (dependency.value is GitDependency) {
+          repositoryUrl = (dependency.value as GitDependency).url.toString();
+        } else if (dependency.value is PathDependency) {
+          // PathDependency is not supported
+          ggLog.call(
+            yellow(
+              'Dependency $dependencyName is a path '
+              'dependency and cannot be cloned.',
+            ),
+          );
+          continue;
+        } else if (dependency.value is SdkDependency) {
+          // SdkDependency is not supported
+          ggLog.call(
+            yellow(
+              'Dependency $dependencyName is a sdk '
+              'dependency and cannot be cloned.',
+            ),
+          );
+          continue;
+        }
 
         if (repositoryUrl == null) {
           ggLog.call(
             yellow(
-              'Dependency $dependency does not have a '
+              'Dependency $dependencyName does not have a '
               'repository url and cannot be cloned.',
             ),
           );
@@ -102,17 +127,17 @@ class CloneDependencies extends DirCommand<dynamic> {
         if (isOnGithub) {
           await cloneDependency(
             workspaceDir,
-            dependency,
+            dependencyName,
             repositoryUrl,
             ggLog,
           );
 
-          dependencyDir = getProjectDir(dependency, workspaceDir) ??
-              Directory('${workspaceDir.path}/$dependency');
+          dependencyDir = getProjectDir(dependencyName, workspaceDir) ??
+              Directory('${workspaceDir.path}/$dependencyName');
 
           // check if dependency exists after cloning
           bool existsAfterCloning =
-              await dependencyExists(dependencyDir, dependency);
+              await dependencyExists(dependencyDir, dependencyName);
 
           if (!existsAfterCloning) {
             continue;
@@ -121,10 +146,10 @@ class CloneDependencies extends DirCommand<dynamic> {
       }
 
       // execute cloneDependencies for dependency
-      projectDirs[dependency] = dependencyDir;
+      projectDirs[dependencyName] = dependencyDir;
       await cloneDependencies(
         workspaceDir,
-        dependency,
+        dependencyName,
         projectDirs,
         processedNodes,
         ggLog,
@@ -199,7 +224,9 @@ Map<File, Pubspec> _pubspecCache = {};
 
 // ...........................................................................
 /// Get the dependencies from the pubspec.yaml file
-Future<List<String>> getDependencies(Directory projectDir) async {
+Future<List<MapEntry<String, Dependency>>> getDependencies(
+  Directory projectDir,
+) async {
   if (!pubspecExists(projectDir)) {
     return [];
   }
@@ -207,10 +234,11 @@ Future<List<String>> getDependencies(Directory projectDir) async {
   Pubspec pubspecYaml = getPubspecYaml(projectDir);
 
   // Iterate all dependencies
-  return [
-    ...pubspecYaml.dependencies.keys,
-    ...pubspecYaml.devDependencies.keys,
+  List<MapEntry<String, Dependency>> allDeps = [
+    ...pubspecYaml.dependencies.entries,
+    ...pubspecYaml.devDependencies.entries,
   ];
+  return allDeps;
 }
 
 // ...........................................................................
@@ -255,8 +283,21 @@ Future<String?> getRepositoryUrl(String packageName) async {
 
   if (response.statusCode == 200) {
     final data = json.decode(response.body);
+
+    // coverage:ignore-start
     final repositoryUrl = data['latest']['pubspec']['repository'] as String?;
-    return repositoryUrl;
+    if (repositoryUrl != null) {
+      return repositoryUrl;
+    }
+
+    // If the repository URL is not available, try to get the homepage URL.
+    final homepage = data['latest']['pubspec']['homepage'] as String?;
+    if (homepage != null && homepage.contains('github.com')) {
+      return homepage;
+    }
+    // coverage:ignore-end
+
+    return null;
   } else {
     // Package not found or an error occurred.
     return null;

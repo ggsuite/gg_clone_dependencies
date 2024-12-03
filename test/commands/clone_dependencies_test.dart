@@ -22,6 +22,9 @@ void main() {
   Directory tempDir = Directory('');
   Directory dParseError = Directory('');
   Directory dWorkspaceSuccess = Directory('');
+  Directory dWorkspaceSuccessGit = Directory('');
+  Directory dWorkspacePathDependency = Directory('');
+  Directory dWorkspaceSdkDependency = Directory('');
   Directory dWorkspaceNoRepository = Directory('');
   Directory dCorrectYaml = Directory('');
   Directory dInvalidYaml = Directory('');
@@ -38,6 +41,9 @@ void main() {
     tempDir = createTempDir('clone_dependencies_test');
     dParseError = createTempDir('parse_error', 'project');
     dWorkspaceSuccess = createTempDir('success');
+    dWorkspaceSuccessGit = createTempDir('success_git');
+    dWorkspacePathDependency = createTempDir('path_dependency');
+    dWorkspaceSdkDependency = createTempDir('sdk_dependency');
     dWorkspaceNoRepository = createTempDir('no_repository');
     dCorrectYaml = createTempDir('correct_yaml', 'project');
     dInvalidYaml = createTempDir('invalid_yaml', 'project');
@@ -54,6 +60,9 @@ void main() {
         tempDir,
         dParseError,
         dWorkspaceSuccess,
+        dWorkspaceSuccessGit,
+        dWorkspacePathDependency,
+        dWorkspaceSdkDependency,
         dWorkspaceNoRepository,
         dCorrectYaml,
         dInvalidYaml,
@@ -144,6 +153,40 @@ dependencies:
         expect(await clonedDependencyDir.exists(), isTrue);
       });
 
+      test('should succeed and clone git dependencies', () async {
+        // Set up a mock workspace with projects and dependencies
+        final projectDir =
+            Directory(p.join(dWorkspaceSuccessGit.path, 'project1'));
+        const dependencyName = 'http';
+
+        // Create the project directory
+        await projectDir.create(recursive: true);
+        // Create a pubspec.yaml for the project
+        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  $dependencyName:
+    git: https://github.com/inlavigo/gg_clone_dependencies.git
+''');
+
+        final myCommand = GithubActionsMock(ggLog: messages.add);
+
+        // Run the command
+        await myCommand.get(directory: projectDir, ggLog: messages.add);
+
+        expect(messages[0], contains('Running clone-dependencies in'));
+        expect(
+          messages[1],
+          contains('Simulating cloning $dependencyName into workspace...'),
+        );
+
+        // Verify that the dependency was "cloned"
+        final clonedDependencyDir =
+            Directory(p.join(dWorkspaceSuccessGit.path, dependencyName));
+        expect(await clonedDependencyDir.exists(), isTrue);
+      });
+
       test('should succeed and print when repository does not exist', () async {
         // Set up a mock workspace with projects and dependencies
         final projectDir =
@@ -178,6 +221,65 @@ dependencies:
         final clonedDependencyDir =
             Directory(p.join(dWorkspaceSuccess.path, 'dependency1'));
         expect(await clonedDependencyDir.exists(), isFalse);
+      });
+
+      test('should skip cloning if dependency is PathDependency', () async {
+        // Set up a mock workspace with projects and dependencies
+        final projectDir =
+            Directory(p.join(dWorkspacePathDependency.path, 'project1'));
+        const dependencyName = 'dependency1';
+
+        // Create the project directory
+        await projectDir.create(recursive: true);
+        // Create a pubspec.yaml for the project
+        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  $dependencyName:
+    path: ../dependency1
+''');
+
+        final myCommand = GithubActionsMock(ggLog: messages.add);
+
+        // Run the command
+        await myCommand.get(directory: projectDir, ggLog: messages.add);
+
+        expect(messages[0], contains('Running clone-dependencies in'));
+        expect(
+          messages[1],
+          contains('Dependency dependency1 is a path '
+              'dependency and cannot be cloned.'),
+        );
+      });
+
+      test('should skip cloning if dependency is SdkDependency', () async {
+        // Set up a mock workspace with projects and dependencies
+        final projectDir =
+            Directory(p.join(dWorkspaceSdkDependency.path, 'project1'));
+
+        // Create the project directory
+        await projectDir.create(recursive: true);
+        // Create a pubspec.yaml for the project
+        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  flutter:
+    sdk: flutter
+''');
+
+        final myCommand = GithubActionsMock(ggLog: messages.add);
+
+        // Run the command
+        await myCommand.get(directory: projectDir, ggLog: messages.add);
+
+        expect(messages[0], contains('Running clone-dependencies in'));
+        expect(
+          messages[1],
+          contains('Dependency flutter is a sdk '
+              'dependency and cannot be cloned.'),
+        );
       });
 
       test('should skip cloning if dependency already exists', () async {
