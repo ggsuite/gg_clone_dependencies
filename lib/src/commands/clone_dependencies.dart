@@ -46,7 +46,7 @@ class CloneDependencies extends DirCommand<dynamic> {
       'checkout-main',
       help: 'Always checkout the main branch of the dependencies.',
       defaultsTo: true,
-      negatable: false,
+      negatable: true,
     );
     argParser.addOption(
       'target',
@@ -82,8 +82,8 @@ class CloneDependencies extends DirCommand<dynamic> {
 
   // ...........................................................................
   /// Returns the checkout-main flag from the command line arguments
-  //bool get checkoutMainFromArgs =>
-  //    argResults?['checkout-main'] as bool? ?? true;
+  bool get checkoutMainFromArgs =>
+      argResults?['checkout-main'] as bool? ?? false;
 
   // ...........................................................................
   @override
@@ -151,10 +151,12 @@ class CloneDependencies extends DirCommand<dynamic> {
       if (!exists) {
         // get the repository url
         String? repositoryUrl;
+        String? reference;
         if (dependency.value is HostedDependency) {
           repositoryUrl = await getRepositoryUrl(dependencyName);
         } else if (dependency.value is GitDependency) {
           repositoryUrl = (dependency.value as GitDependency).url.toString();
+          reference = (dependency.value as GitDependency).ref;
         } else if (dependency.value is PathDependency) {
           // PathDependency is not supported
           ggLog.call(
@@ -185,28 +187,35 @@ class CloneDependencies extends DirCommand<dynamic> {
           continue;
         }
 
+        if (checkoutMainFromArgs) {
+          reference = null;
+        }
+
         // check if dependency is on github
         bool isOnGithub = await checkGithubOrigin(workspaceDir, repositoryUrl);
 
         // clone dependency
-        if (isOnGithub) {
-          await cloneDependency(
-            workspaceDir,
-            dependencyName,
-            repositoryUrl,
-            ggLog,
-          );
+        if (!isOnGithub) {
+          continue;
+        }
 
-          dependencyDir = getProjectDir(dependencyName, workspaceDir) ??
-              Directory('${workspaceDir.path}/$dependencyName');
+        await cloneDependency(
+          workspaceDir,
+          dependencyName,
+          repositoryUrl,
+          ggLog,
+          reference: reference,
+        );
 
-          // check if dependency exists after cloning
-          bool existsAfterCloning =
-              await dependencyExists(dependencyDir, dependencyName);
+        dependencyDir = getProjectDir(dependencyName, workspaceDir) ??
+            Directory('${workspaceDir.path}/$dependencyName');
 
-          if (!existsAfterCloning) {
-            continue;
-          }
+        // check if dependency exists after cloning
+        bool existsAfterCloning =
+            await dependencyExists(dependencyDir, dependencyName);
+
+        if (!existsAfterCloning) {
+          continue;
         }
       }
 
@@ -269,6 +278,7 @@ class CloneDependencies extends DirCommand<dynamic> {
     String dependency,
     String repositoryUrl,
     GgLog ggLog, {
+    String? reference,
     Future<ProcessResult> Function(
       String,
       List<String>, {
@@ -278,9 +288,17 @@ class CloneDependencies extends DirCommand<dynamic> {
     processRun ??= Process.run;
 
     ggLog('Cloning $dependency into workspace...');
+
+    // coverage:ignore-start
+    List<String> arguments = ['clone', repositoryUrl];
+    if (reference != null) {
+      arguments.add('-b');
+      arguments.add(reference);
+    }
+
     final cloneResult = await processRun(
       'git',
-      ['clone', repositoryUrl],
+      arguments,
       workingDirectory: workspaceDir.path,
     );
 
@@ -289,6 +307,7 @@ class CloneDependencies extends DirCommand<dynamic> {
         'Failed to clone $dependency. Exit code: ${cloneResult.exitCode}',
       );
     }
+    // coverage:ignore-end
   }
 }
 

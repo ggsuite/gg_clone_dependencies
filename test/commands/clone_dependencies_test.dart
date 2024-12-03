@@ -23,6 +23,7 @@ void main() {
   Directory dParseError = Directory('');
   Directory dWorkspaceSuccess = Directory('');
   Directory dWorkspaceSuccessGit = Directory('');
+  Directory dWorkspaceSuccessGitRef = Directory('');
   Directory dWorkspacePathDependency = Directory('');
   Directory dWorkspaceSdkDependency = Directory('');
   Directory dWorkspaceNoRepository = Directory('');
@@ -46,6 +47,7 @@ void main() {
     dParseError = createTempDir('parse_error', 'project');
     dWorkspaceSuccess = createTempDir('success');
     dWorkspaceSuccessGit = createTempDir('success_git');
+    dWorkspaceSuccessGitRef = createTempDir('success_git_ref');
     dWorkspacePathDependency = createTempDir('path_dependency');
     dWorkspaceSdkDependency = createTempDir('sdk_dependency');
     dWorkspaceNoRepository = createTempDir('no_repository');
@@ -69,6 +71,7 @@ void main() {
         dParseError,
         dWorkspaceSuccess,
         dWorkspaceSuccessGit,
+        dWorkspaceSuccessGitRef,
         dWorkspacePathDependency,
         dWorkspaceSdkDependency,
         dWorkspaceNoRepository,
@@ -190,6 +193,41 @@ dependencies:
         // Verify that the dependency was "cloned"
         final clonedDependencyDir =
             Directory(p.join(dWorkspaceSuccessGit.path, dependencyName));
+        expect(await clonedDependencyDir.exists(), isTrue);
+      });
+
+      test('should succeed and clone git dependencies with ref', () async {
+        // Set up a mock workspace with projects and dependencies
+        final projectDir = createSubdir(dWorkspaceSuccessGitRef, 'project1');
+        const dependencyName = 'http';
+
+        // Create a pubspec.yaml for the project
+        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  $dependencyName:
+    git: 
+      url: https://github.com/inlavigo/gg_clone_dependencies.git
+      ref: dev
+''');
+
+        await runner.run([
+          'clone-dependencies',
+          '--input',
+          projectDir.path,
+          '--no-checkout-main',
+        ]);
+
+        expect(messages[0], contains('Running clone-dependencies in'));
+        expect(
+          messages[1],
+          contains('Simulating cloning $dependencyName into workspace...'),
+        );
+
+        // Verify that the dependency was "cloned"
+        final clonedDependencyDir =
+            Directory(p.join(dWorkspaceSuccessGitRef.path, dependencyName));
         expect(await clonedDependencyDir.exists(), isTrue);
       });
 
@@ -782,6 +820,7 @@ class GithubActionsMock extends CloneDependencies {
     String dependency,
     String repositoryUrl,
     GgLog ggLog, {
+    String? reference,
     Future<ProcessResult> Function(
       String,
       List<String>, {
