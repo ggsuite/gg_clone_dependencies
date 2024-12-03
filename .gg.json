@@ -8,5 +8,15 @@
     "success": {
       "hash": 3849090716706
     }
+  },
+  "canPush": {
+    "success": {
+      "hash": 3849090716706
+    }
+  },
+  "doPush": {
+    "success": {
+      "hash": 3849090716706
+    }
   }
 }
