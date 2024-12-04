@@ -529,8 +529,8 @@ dependencies:
         await dependencyDir.create(recursive: true);
 
         final exists = await dependencyExists(
-          dependencyDir,
-          dependencyName,
+          dependencyDir: dependencyDir,
+          dependency: dependencyName,
           ggLog: messages.add,
         );
         expect(exists, isTrue);
@@ -547,8 +547,8 @@ dependencies:
         const dependencyName = 'dependency1';
 
         final exists = await dependencyExists(
-          dependencyDir,
-          dependencyName,
+          dependencyDir: dependencyDir,
+          dependency: dependencyName,
           ggLog: messages.add,
         );
         expect(exists, isFalse);
@@ -575,8 +575,8 @@ dependencies:
 
         final result =
             await CloneDependencies(ggLog: messages.add).checkGithubOrigin(
-          workspaceDir,
-          packageName,
+          workspaceDir: workspaceDir,
+          repositoryUrl: packageName,
           processRun: mockProcessRun,
         );
         expect(result, isTrue);
@@ -602,8 +602,8 @@ dependencies:
 
         final result =
             await CloneDependencies(ggLog: messages.add).checkGithubOrigin(
-          workspaceDir,
-          packageName,
+          workspaceDir: workspaceDir,
+          repositoryUrl: packageName,
           processRun: mockProcessRun,
         );
         expect(result, isFalse);
@@ -628,8 +628,8 @@ dependencies:
 
         await expectLater(
           CloneDependencies(ggLog: messages.add).checkGithubOrigin(
-            workspaceDir,
-            packageName,
+            workspaceDir: workspaceDir,
+            repositoryUrl: packageName,
             processRun: mockProcessRun,
           ),
           throwsA(
@@ -662,10 +662,10 @@ dependencies:
         const dependencyName = 'dependency1';
 
         await CloneDependencies(ggLog: messages.add).cloneDependency(
-          workspaceDir,
-          dependencyName,
-          'git@github.com:inlavigo/$dependencyName.git',
-          messages.add,
+          workspaceDir: workspaceDir,
+          dependency: dependencyName,
+          repositoryUrl: 'git@github.com:inlavigo/$dependencyName.git',
+          ggLog: messages.add,
           processRun: mockProcessRun,
         );
         expect(
@@ -693,10 +693,10 @@ dependencies:
 
         await expectLater(
           CloneDependencies(ggLog: messages.add).cloneDependency(
-            workspaceDir,
-            dependencyName,
-            'git@github.com:inlavigo/$dependencyName.git',
-            messages.add,
+            workspaceDir: workspaceDir,
+            dependency: dependencyName,
+            repositoryUrl: 'git@github.com:inlavigo/$dependencyName.git',
+            ggLog: messages.add,
             processRun: mockProcessRun,
           ),
           throwsA(
@@ -780,15 +780,18 @@ version: 1.0.0
 dependencies:
   dependency1: ^1.0.0
   ''');
-        final result = getProjectDir('project1', dGetProjectDirWorkspace);
+        final result = getProjectDir(
+          packageName: 'project1',
+          workspaceDir: dGetProjectDirWorkspace,
+        );
         expect(result, isNotNull);
         expect(result!.path, equals(projectDir.path));
       });
 
       test('should return null if the project directory does not exist', () {
         final result = getProjectDir(
-          'non_existent_project',
-          dGetProjectDirNonExistentWorkspace,
+          packageName: 'non_existent_project',
+          workspaceDir: dGetProjectDirNonExistentWorkspace,
         );
         expect(result, isNull);
       });
@@ -802,9 +805,9 @@ class GithubActionsMock extends CloneDependencies {
   });
 
   @override
-  Future<bool> checkGithubOrigin(
-    Directory workspaceDir,
-    String repositoryUrl, {
+  Future<bool> checkGithubOrigin({
+    required Directory workspaceDir,
+    required String repositoryUrl,
     Future<ProcessResult> Function(
       String,
       List<String>, {
@@ -815,11 +818,11 @@ class GithubActionsMock extends CloneDependencies {
   }
 
   @override
-  Future<void> cloneDependency(
-    Directory workspaceDir,
-    String dependency,
-    String repositoryUrl,
-    GgLog ggLog, {
+  Future<void> cloneDependency({
+    required Directory workspaceDir,
+    required String dependency,
+    required String repositoryUrl,
+    required GgLog ggLog,
     String? reference,
     Future<ProcessResult> Function(
       String,

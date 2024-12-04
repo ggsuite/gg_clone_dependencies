@@ -107,23 +107,23 @@ class CloneDependencies extends DirCommand<dynamic> {
     Map<String, Directory> projectDirs = {packageName: projectDir};
 
     await cloneDependencies(
-      workspaceDir,
-      packageName,
-      projectDirs,
-      processedNodes,
-      ggLog,
+      workspaceDir: workspaceDir,
+      packageName: packageName,
+      projectDirs: projectDirs,
+      processedNodes: processedNodes,
+      ggLog: ggLog,
     );
   }
 
   // ...........................................................................
   /// Clone all dependencies of the project
-  Future<void> cloneDependencies(
-    Directory workspaceDir,
-    String packageName,
-    Map<String, Directory> projectDirs,
-    Set<String> processedNodes,
-    GgLog ggLog,
-  ) async {
+  Future<void> cloneDependencies({
+    required Directory workspaceDir,
+    required String packageName,
+    required Map<String, Directory> projectDirs,
+    required Set<String> processedNodes,
+    required GgLog ggLog,
+  }) async {
     final projectDir = correctDir(projectDirs[packageName]!);
 
     // Iterate all dependencies
@@ -141,12 +141,18 @@ class CloneDependencies extends DirCommand<dynamic> {
       }
       processedNodes.add(dependencyName);
 
-      Directory dependencyDir = getProjectDir(dependencyName, workspaceDir) ??
+      Directory dependencyDir = getProjectDir(
+            packageName: dependencyName,
+            workspaceDir: workspaceDir,
+          ) ??
           Directory('${workspaceDir.path}/$dependencyName');
 
       // check if dependency already exists
-      bool exists =
-          await dependencyExists(dependencyDir, dependencyName, ggLog: ggLog);
+      bool exists = await dependencyExists(
+        dependencyDir: dependencyDir,
+        dependency: dependencyName,
+        ggLog: ggLog,
+      );
 
       if (!exists) {
         // get the repository url
@@ -192,7 +198,10 @@ class CloneDependencies extends DirCommand<dynamic> {
         }
 
         // check if dependency is on github
-        bool isOnGithub = await checkGithubOrigin(workspaceDir, repositoryUrl);
+        bool isOnGithub = await checkGithubOrigin(
+          workspaceDir: workspaceDir,
+          repositoryUrl: repositoryUrl,
+        );
 
         // clone dependency
         if (!isOnGithub) {
@@ -200,19 +209,24 @@ class CloneDependencies extends DirCommand<dynamic> {
         }
 
         await cloneDependency(
-          workspaceDir,
-          dependencyName,
-          repositoryUrl,
-          ggLog,
+          workspaceDir: workspaceDir,
+          dependency: dependencyName,
+          repositoryUrl: repositoryUrl,
+          ggLog: ggLog,
           reference: reference,
         );
 
-        dependencyDir = getProjectDir(dependencyName, workspaceDir) ??
+        dependencyDir = getProjectDir(
+              packageName: dependencyName,
+              workspaceDir: workspaceDir,
+            ) ??
             Directory('${workspaceDir.path}/$dependencyName');
 
         // check if dependency exists after cloning
-        bool existsAfterCloning =
-            await dependencyExists(dependencyDir, dependencyName);
+        bool existsAfterCloning = await dependencyExists(
+          dependencyDir: dependencyDir,
+          dependency: dependencyName,
+        );
 
         if (!existsAfterCloning) {
           continue;
@@ -228,11 +242,11 @@ class CloneDependencies extends DirCommand<dynamic> {
 
       if (allFromArgs) {
         await cloneDependencies(
-          workspaceDir,
-          dependencyName,
-          projectDirs,
-          processedNodes,
-          ggLog,
+          workspaceDir: workspaceDir,
+          packageName: dependencyName,
+          projectDirs: projectDirs,
+          processedNodes: processedNodes,
+          ggLog: ggLog,
         );
       }
     }
@@ -240,9 +254,9 @@ class CloneDependencies extends DirCommand<dynamic> {
 
   // ...........................................................................
   /// Check if the dependency exists on github
-  Future<bool> checkGithubOrigin(
-    Directory workspaceDir,
-    String repositoryUrl, {
+  Future<bool> checkGithubOrigin({
+    required Directory workspaceDir,
+    required String repositoryUrl,
     Future<ProcessResult> Function(
       String,
       List<String>, {
@@ -273,11 +287,11 @@ class CloneDependencies extends DirCommand<dynamic> {
 
   // ...........................................................................
   /// Clone the dependency from GitHub
-  Future<void> cloneDependency(
-    Directory workspaceDir,
-    String dependency,
-    String repositoryUrl,
-    GgLog ggLog, {
+  Future<void> cloneDependency({
+    required Directory workspaceDir,
+    required String dependency,
+    required String repositoryUrl,
+    required GgLog ggLog,
     String? reference,
     Future<ProcessResult> Function(
       String,
@@ -334,9 +348,9 @@ Future<List<MapEntry<String, Dependency>>> getDependencies(
 
 // ...........................................................................
 /// Check if the dependency already exists in the workspace
-Future<bool> dependencyExists(
-  Directory dependencyDir,
-  String dependency, {
+Future<bool> dependencyExists({
+  required Directory dependencyDir,
+  required String dependency,
   GgLog? ggLog,
 }) async {
   if (await dependencyDir.exists()) {
@@ -426,7 +440,10 @@ bool pubspecExists(Directory projectDir) =>
 
 // ...........................................................................
 /// Get the project directory
-Directory? getProjectDir(String packageName, Directory workspaceDir) {
+Directory? getProjectDir({
+  required String packageName,
+  required Directory workspaceDir,
+}) {
   for (final entity in workspaceDir.listSync()) {
     if (entity is! Directory) {
       continue;
