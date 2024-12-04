@@ -10,3 +10,4 @@
 ### Changed
 
 - change to named parameters in all methods
+- restructure tests

@@ -105,73 +105,76 @@ void main() {
         );
       });
 
-      test('should throw when project root is not found', () async {
-        await expectLater(
-          runner.run(['clone-dependencies', '--input', tempDir.path]),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              contains('No project root found'),
+      group('should throw when', () {
+        test('project root is not found', () async {
+          await expectLater(
+            runner.run(['clone-dependencies', '--input', tempDir.path]),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'message',
+                contains('No project root found'),
+              ),
             ),
-          ),
-        );
+          );
+        });
+
+        test('pubspec.yaml cannot be parsed', () async {
+          // Create a pubspec.yaml with invalid content in tempDir
+          await File(p.join(dParseError.path, 'pubspec.yaml'))
+              .writeAsString('invalid yaml');
+
+          await expectLater(
+            runner.run(['clone-dependencies', '--input', dParseError.path]),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'message',
+                contains('Error parsing pubspec.yaml'),
+              ),
+            ),
+          );
+        });
       });
 
-      test('should throw when pubspec.yaml cannot be parsed', () async {
-        // Create a pubspec.yaml with invalid content in tempDir
-        await File(p.join(dParseError.path, 'pubspec.yaml'))
-            .writeAsString('invalid yaml');
+      group('should succeed and', () {
+        test('clone dependencies', () async {
+          // Set up a mock workspace with projects and dependencies
+          final projectDir = createSubdir(dWorkspaceSuccess, 'project1');
+          const dependencyName = 'http';
 
-        await expectLater(
-          runner.run(['clone-dependencies', '--input', dParseError.path]),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              contains('Error parsing pubspec.yaml'),
-            ),
-          ),
-        );
-      });
-
-      test('should succeed and clone dependencies', () async {
-        // Set up a mock workspace with projects and dependencies
-        final projectDir = createSubdir(dWorkspaceSuccess, 'project1');
-        const dependencyName = 'http';
-
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
   $dependencyName: ^1.0.0
 ''');
 
-        final myCommand = GithubActionsMock(ggLog: messages.add);
+          final myCommand = GithubActionsMock(ggLog: messages.add);
 
-        // Run the command
-        await myCommand.get(directory: projectDir, ggLog: messages.add);
+          // Run the command
+          await myCommand.get(directory: projectDir, ggLog: messages.add);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains('Simulating cloning $dependencyName into workspace...'),
-        );
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains('Simulating cloning $dependencyName into workspace...'),
+          );
 
-        // Verify that the dependency was "cloned"
-        final clonedDependencyDir =
-            Directory(p.join(dWorkspaceSuccess.path, dependencyName));
-        expect(await clonedDependencyDir.exists(), isTrue);
-      });
+          // Verify that the dependency was "cloned"
+          final clonedDependencyDir =
+              Directory(p.join(dWorkspaceSuccess.path, dependencyName));
+          expect(await clonedDependencyDir.exists(), isTrue);
+        });
 
-      test('should succeed and clone git dependencies', () async {
-        // Set up a mock workspace with projects and dependencies
-        final projectDir = createSubdir(dWorkspaceSuccessGit, 'project1');
-        const dependencyName = 'http';
+        test('clone git dependencies', () async {
+          // Set up a mock workspace with projects and dependencies
+          final projectDir = createSubdir(dWorkspaceSuccessGit, 'project1');
+          const dependencyName = 'http';
 
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
@@ -179,30 +182,30 @@ dependencies:
     git: https://github.com/inlavigo/gg_clone_dependencies.git
 ''');
 
-        final myCommand = GithubActionsMock(ggLog: messages.add);
+          final myCommand = GithubActionsMock(ggLog: messages.add);
 
-        // Run the command
-        await myCommand.get(directory: projectDir, ggLog: messages.add);
+          // Run the command
+          await myCommand.get(directory: projectDir, ggLog: messages.add);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains('Simulating cloning $dependencyName into workspace...'),
-        );
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains('Simulating cloning $dependencyName into workspace...'),
+          );
 
-        // Verify that the dependency was "cloned"
-        final clonedDependencyDir =
-            Directory(p.join(dWorkspaceSuccessGit.path, dependencyName));
-        expect(await clonedDependencyDir.exists(), isTrue);
-      });
+          // Verify that the dependency was "cloned"
+          final clonedDependencyDir =
+              Directory(p.join(dWorkspaceSuccessGit.path, dependencyName));
+          expect(await clonedDependencyDir.exists(), isTrue);
+        });
 
-      test('should succeed and clone git dependencies with ref', () async {
-        // Set up a mock workspace with projects and dependencies
-        final projectDir = createSubdir(dWorkspaceSuccessGitRef, 'project1');
-        const dependencyName = 'http';
+        test('clone git dependencies with ref', () async {
+          // Set up a mock workspace with projects and dependencies
+          final projectDir = createSubdir(dWorkspaceSuccessGitRef, 'project1');
+          const dependencyName = 'http';
 
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
@@ -212,188 +215,107 @@ dependencies:
       ref: dev
 ''');
 
-        await runner.run([
-          'clone-dependencies',
-          '--input',
-          projectDir.path,
-          '--no-checkout-main',
-        ]);
+          await runner.run([
+            'clone-dependencies',
+            '--input',
+            projectDir.path,
+            '--no-checkout-main',
+          ]);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains('Simulating cloning $dependencyName into workspace...'),
-        );
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains('Simulating cloning $dependencyName into workspace...'),
+          );
 
-        // Verify that the dependency was "cloned"
-        final clonedDependencyDir =
-            Directory(p.join(dWorkspaceSuccessGitRef.path, dependencyName));
-        expect(await clonedDependencyDir.exists(), isTrue);
-      });
+          // Verify that the dependency was "cloned"
+          final clonedDependencyDir =
+              Directory(p.join(dWorkspaceSuccessGitRef.path, dependencyName));
+          expect(await clonedDependencyDir.exists(), isTrue);
+        });
 
-      test('should succeed and print when repository does not exist', () async {
-        // Set up a mock workspace with projects and dependencies
-        final projectDir = createSubdir(dWorkspaceNoRepository, 'project1');
-        const dependencyName = 'dependency1';
+        test('print when repository does not exist', () async {
+          // Set up a mock workspace with projects and dependencies
+          final projectDir = createSubdir(dWorkspaceNoRepository, 'project1');
+          const dependencyName = 'dependency1';
 
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
   $dependencyName: ^1.0.0
 ''');
 
-        final myCommand = GithubActionsMock(ggLog: messages.add);
+          final myCommand = GithubActionsMock(ggLog: messages.add);
 
-        // Run the command
-        await myCommand.get(directory: projectDir, ggLog: messages.add);
+          // Run the command
+          await myCommand.get(directory: projectDir, ggLog: messages.add);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains(
-            'Dependency dependency1 does not '
-            'have a repository url and cannot be cloned.',
-          ),
-        );
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains(
+              'Dependency dependency1 does not '
+              'have a repository url and cannot be cloned.',
+            ),
+          );
 
-        // Verify that the dependency was not cloned
-        final clonedDependencyDir =
-            Directory(p.join(dWorkspaceNoRepository.path, 'dependency1'));
-        expect(await clonedDependencyDir.exists(), isFalse);
-      });
+          // Verify that the dependency was not cloned
+          final clonedDependencyDir =
+              Directory(p.join(dWorkspaceNoRepository.path, 'dependency1'));
+          expect(await clonedDependencyDir.exists(), isFalse);
+        });
 
-      test('should skip cloning if dependency is PathDependency', () async {
-        // Set up a mock workspace with projects and dependencies
-        final projectDir = createSubdir(dWorkspacePathDependency, 'project1');
-        const dependencyName = 'dependency1';
+        test(
+            'clone dependencies into the specified target '
+            'directory when target argument is provided', () async {
+          // Set up a mock workspace with a project
+          final projectDir = createSubdir(dTargetArgumentTest, 'project1');
+          const dependencyName = 'http';
 
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
-name: project1
-version: 1.0.0
-dependencies:
-  $dependencyName:
-    path: ../dependency1
-''');
-
-        final myCommand = GithubActionsMock(ggLog: messages.add);
-
-        // Run the command
-        await myCommand.get(directory: projectDir, ggLog: messages.add);
-
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains('Dependency dependency1 is a path '
-              'dependency and cannot be cloned.'),
-        );
-      });
-
-      test('should skip cloning if dependency is SdkDependency', () async {
-        // Set up a mock workspace with projects and dependencies
-        final projectDir = createSubdir(dWorkspaceSdkDependency, 'project1');
-
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
-name: project1
-version: 1.0.0
-dependencies:
-  flutter2:
-    sdk: flutter2
-''');
-
-        final myCommand = GithubActionsMock(ggLog: messages.add);
-
-        // Run the command
-        await myCommand.get(directory: projectDir, ggLog: messages.add);
-
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains('Dependency flutter2 is a sdk '
-              'dependency and cannot be cloned.'),
-        );
-      });
-
-      test('should skip cloning if dependency already exists', () async {
-        // Set up a mock workspace with projects and dependencies
-        final workspaceDir = tempDir;
-        final projectDir = createSubdir(workspaceDir, 'project1');
-        const dependencyName = 'dependency1';
-        final dependencyDir =
-            Directory(p.join(workspaceDir.path, dependencyName));
-
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
   $dependencyName: ^1.0.0
 ''');
 
-        // Simulate that the dependency already exists in the workspace
-        await dependencyDir.create(recursive: true);
+          // Specify a target directory
+          final targetDir = createSubdir(dTargetArgumentTest, 'custom_target');
 
-        await runner.run(['clone-dependencies', '--input', projectDir.path]);
+          // Run the command with the target argument
+          await runner.run([
+            'clone-dependencies',
+            '--target',
+            targetDir.path,
+            '--input',
+            projectDir.path,
+          ]);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains('Dependency dependency1 already exists in workspace.'),
-        );
-      });
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains('Simulating cloning $dependencyName into workspace...'),
+          );
 
-      test(
-          'should clone dependencies into the specified target '
-          'directory when target argument is provided', () async {
-        // Set up a mock workspace with a project
-        final projectDir = createSubdir(dTargetArgumentTest, 'project1');
-        const dependencyName = 'http';
+          // Verify that the dependency was "cloned" into the target directory
+          final clonedDependencyDir =
+              Directory(p.join(targetDir.path, dependencyName));
+          expect(await clonedDependencyDir.exists(), isTrue);
+        });
 
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
-name: project1
-version: 1.0.0
-dependencies:
-  $dependencyName: ^1.0.0
-''');
+        test(
+            'exclude specified dependencies '
+            'when exclude argument is provided', () async {
+          // Set up a mock workspace with a project
+          final projectDir = createSubdir(dExcludeArgumentTest, 'project1');
+          const dependencyToExclude = 'http';
+          const dependencyToInclude = 'path';
 
-        // Specify a target directory
-        final targetDir = createSubdir(dTargetArgumentTest, 'custom_target');
-
-        // Run the command with the target argument
-        await runner.run([
-          'clone-dependencies',
-          '--target',
-          targetDir.path,
-          '--input',
-          projectDir.path,
-        ]);
-
-        expect(messages[0], contains('Running clone-dependencies in'));
-        expect(
-          messages[1],
-          contains('Simulating cloning $dependencyName into workspace...'),
-        );
-
-        // Verify that the dependency was "cloned" into the target directory
-        final clonedDependencyDir =
-            Directory(p.join(targetDir.path, dependencyName));
-        expect(await clonedDependencyDir.exists(), isTrue);
-      });
-
-      test(
-          'should exclude specified dependencies '
-          'when exclude argument is provided', () async {
-        // Set up a mock workspace with a project
-        final projectDir = createSubdir(dExcludeArgumentTest, 'project1');
-        const dependencyToExclude = 'http';
-        const dependencyToInclude = 'path';
-
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
@@ -401,120 +323,205 @@ dependencies:
   $dependencyToInclude: ^1.0.0
 ''');
 
-        // Run the command with the exclude argument
-        await runner.run([
-          'clone-dependencies',
-          '--exclude',
-          dependencyToExclude,
-          '--input',
-          projectDir.path,
-        ]);
+          // Run the command with the exclude argument
+          await runner.run([
+            'clone-dependencies',
+            '--exclude',
+            dependencyToExclude,
+            '--input',
+            projectDir.path,
+          ]);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
+          expect(messages[0], contains('Running clone-dependencies in'));
 
-        // Verify that the excluded dependency was not cloned
-        final excludedDependencyDir =
-            Directory(p.join(dExcludeArgumentTest.path, dependencyToExclude));
-        expect(await excludedDependencyDir.exists(), isFalse);
+          // Verify that the excluded dependency was not cloned
+          final excludedDependencyDir =
+              Directory(p.join(dExcludeArgumentTest.path, dependencyToExclude));
+          expect(await excludedDependencyDir.exists(), isFalse);
 
-        // Verify that the other dependency was cloned
-        final includedDependencyDir =
-            Directory(p.join(dExcludeArgumentTest.path, dependencyToInclude));
-        expect(await includedDependencyDir.exists(), isTrue);
-      });
+          // Verify that the other dependency was cloned
+          final includedDependencyDir =
+              Directory(p.join(dExcludeArgumentTest.path, dependencyToInclude));
+          expect(await includedDependencyDir.exists(), isTrue);
+        });
 
-      test(
-          'should only clone direct dependencies '
-          'when direct argument is provided', () async {
-        // Set up a mock workspace with a project and nested dependencies
-        final projectDir = createSubdir(dDirectArgumentTest, 'project1');
-        final directDepDir = createSubdir(dAllArgumentTest, 'http');
-        const directDependency = 'http';
-        const transitiveDependency =
-            'async'; // Let's assume 'http' depends on 'async'
+        test(
+            'only clone direct dependencies '
+            'when direct argument is provided', () async {
+          // Set up a mock workspace with a project and nested dependencies
+          final projectDir = createSubdir(dDirectArgumentTest, 'project1');
+          final directDepDir = createSubdir(dAllArgumentTest, 'http');
+          const directDependency = 'http';
+          const transitiveDependency =
+              'async'; // Let's assume 'http' depends on 'async'
 
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
   $directDependency: ^1.0.0
 ''');
 
-        // Create a pubspec.yaml for the direct dependency
-        await File(p.join(directDepDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the direct dependency
+          await File(p.join(directDepDir.path, 'pubspec.yaml'))
+              .writeAsString('''
 name: $directDependency
 version: 1.0.0
 dependencies:
   $transitiveDependency: ^1.0.0
 ''');
 
-        // Run the command with the direct argument
-        await runner.run([
-          'clone-dependencies',
-          '--direct',
-          '--input',
-          projectDir.path,
-        ]);
+          // Run the command with the direct argument
+          await runner.run([
+            'clone-dependencies',
+            '--direct',
+            '--input',
+            projectDir.path,
+          ]);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
+          expect(messages[0], contains('Running clone-dependencies in'));
 
-        // Verify that the direct dependency was cloned
-        final directDependencyDir =
-            Directory(p.join(dDirectArgumentTest.path, directDependency));
-        expect(await directDependencyDir.exists(), isTrue);
+          // Verify that the direct dependency was cloned
+          final directDependencyDir =
+              Directory(p.join(dDirectArgumentTest.path, directDependency));
+          expect(await directDependencyDir.exists(), isTrue);
 
-        // Verify that transitive dependencies were not cloned
-        final transitiveDependencyDir =
-            Directory(p.join(dDirectArgumentTest.path, transitiveDependency));
-        expect(await transitiveDependencyDir.exists(), isFalse);
-      });
+          // Verify that transitive dependencies were not cloned
+          final transitiveDependencyDir =
+              Directory(p.join(dDirectArgumentTest.path, transitiveDependency));
+          expect(await transitiveDependencyDir.exists(), isFalse);
+        });
 
-      test(
-          'should clone all dependencies when all argument is provided as true',
-          () async {
-        // Set up a mock workspace with a project and nested dependencies
-        final projectDir = createSubdir(dAllArgumentTest, 'project1');
-        final directDepDir = createSubdir(dAllArgumentTest, 'http');
-        const directDependency = 'http';
-        const transitiveDependency =
-            'async'; // Let's assume 'http' depends on 'async'
+        test('clone all dependencies when all argument is provided as true',
+            () async {
+          // Set up a mock workspace with a project and nested dependencies
+          final projectDir = createSubdir(dAllArgumentTest, 'project1');
+          final directDepDir = createSubdir(dAllArgumentTest, 'http');
+          const directDependency = 'http';
+          const transitiveDependency =
+              'async'; // Let's assume 'http' depends on 'async'
 
-        // Create a pubspec.yaml for the project
-        await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
   $directDependency: ^1.0.0
 ''');
 
-        // Create a pubspec.yaml for the direct dependency
-        await File(p.join(directDepDir.path, 'pubspec.yaml')).writeAsString('''
+          // Create a pubspec.yaml for the direct dependency
+          await File(p.join(directDepDir.path, 'pubspec.yaml'))
+              .writeAsString('''
 name: $directDependency
 version: 1.0.0
 dependencies:
   $transitiveDependency: ^1.0.0
 ''');
 
-        // Run the command with the all argument (which defaults to true)
-        await runner.run([
-          'clone-dependencies',
-          '--all',
-          '--input',
-          projectDir.path,
-        ]);
+          // Run the command with the all argument (which defaults to true)
+          await runner.run([
+            'clone-dependencies',
+            '--all',
+            '--input',
+            projectDir.path,
+          ]);
 
-        expect(messages[0], contains('Running clone-dependencies in'));
+          expect(messages[0], contains('Running clone-dependencies in'));
 
-        // Verify that the direct dependency was cloned
-        final directDependencyDir =
-            Directory(p.join(dAllArgumentTest.path, directDependency));
-        expect(await directDependencyDir.exists(), isTrue);
+          // Verify that the direct dependency was cloned
+          final directDependencyDir =
+              Directory(p.join(dAllArgumentTest.path, directDependency));
+          expect(await directDependencyDir.exists(), isTrue);
 
-        // Verify that transitive dependencies were also cloned
-        final transitiveDependencyDir =
-            Directory(p.join(dAllArgumentTest.path, transitiveDependency));
-        expect(await transitiveDependencyDir.exists(), isTrue);
+          // Verify that transitive dependencies were also cloned
+          final transitiveDependencyDir =
+              Directory(p.join(dAllArgumentTest.path, transitiveDependency));
+          expect(await transitiveDependencyDir.exists(), isTrue);
+        });
+      });
+
+      group('should skip cloning if', () {
+        test('dependency is PathDependency', () async {
+          // Set up a mock workspace with projects and dependencies
+          final projectDir = createSubdir(dWorkspacePathDependency, 'project1');
+          const dependencyName = 'dependency1';
+
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  $dependencyName:
+    path: ../dependency1
+''');
+
+          final myCommand = GithubActionsMock(ggLog: messages.add);
+
+          // Run the command
+          await myCommand.get(directory: projectDir, ggLog: messages.add);
+
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains('Dependency dependency1 is a path '
+                'dependency and cannot be cloned.'),
+          );
+        });
+
+        test('dependency is SdkDependency', () async {
+          // Set up a mock workspace with projects and dependencies
+          final projectDir = createSubdir(dWorkspaceSdkDependency, 'project1');
+
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  flutter2:
+    sdk: flutter2
+''');
+
+          final myCommand = GithubActionsMock(ggLog: messages.add);
+
+          // Run the command
+          await myCommand.get(directory: projectDir, ggLog: messages.add);
+
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains('Dependency flutter2 is a sdk '
+                'dependency and cannot be cloned.'),
+          );
+        });
+
+        test('dependency already exists', () async {
+          // Set up a mock workspace with projects and dependencies
+          final workspaceDir = tempDir;
+          final projectDir = createSubdir(workspaceDir, 'project1');
+          const dependencyName = 'dependency1';
+          final dependencyDir =
+              Directory(p.join(workspaceDir.path, dependencyName));
+
+          // Create a pubspec.yaml for the project
+          await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString('''
+name: project1
+version: 1.0.0
+dependencies:
+  $dependencyName: ^1.0.0
+''');
+
+          // Simulate that the dependency already exists in the workspace
+          await dependencyDir.create(recursive: true);
+
+          await runner.run(['clone-dependencies', '--input', projectDir.path]);
+
+          expect(messages[0], contains('Running clone-dependencies in'));
+          expect(
+            messages[1],
+            contains('Dependency dependency1 already exists in workspace.'),
+          );
+        });
       });
     });
   });
