@@ -210,7 +210,7 @@ name: project1
 version: 1.0.0
 dependencies:
   $dependencyName:
-    git: 
+    git:
       url: https://github.com/inlavigo/gg_clone_dependencies.git
       ref: dev
 ''');
@@ -219,7 +219,7 @@ dependencies:
             'clone-dependencies',
             '--input',
             projectDir.path,
-            '--no-checkout-main',
+            '--no-checkout-main-branch',
           ]);
 
           expect(messages[0], contains('Running clone-dependencies in'));

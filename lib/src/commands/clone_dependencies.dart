@@ -43,8 +43,10 @@ class CloneDependencies extends DirCommand<dynamic> {
       negatable: false,
     );
     argParser.addFlag(
-      'checkout-main',
-      help: 'Always checkout the main branch of the dependencies.',
+      'checkout-main-branch',
+      help: 'Checkout the main branch of git dependencies. '
+          'Use --no-checkout-main-branch to checkout exact revision specified '
+          'in the pubspec.yaml.',
       defaultsTo: true,
       negatable: true,
     );
@@ -88,7 +90,7 @@ class CloneDependencies extends DirCommand<dynamic> {
   // ...........................................................................
   /// Returns the checkout-main flag from the command line arguments
   bool get checkoutMainFromArgs =>
-      argResults?['checkout-main'] as bool? ?? false;
+      argResults?['checkout-main-branch'] as bool? ?? false;
 
   // ...........................................................................
   @override

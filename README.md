@@ -31,3 +31,33 @@ By default only direct dependencies are checked out.
 ```bash
 gg_clone_dependencies --all
 ```
+
+## Checkout the main branches of git references
+
+```bash
+gg_clone_dependencies --checkout-main-branch
+```
+
+## Checkout exact branch of git references
+
+```bash
+gg_clone_dependencies --no-checkout-main-branch
+```
+
+## Clone the dependencies to a specified directory
+
+```bash
+gg_clone_dependencies --target ~/tmp
+```
+
+## Execute clone dependencie in a given directory
+
+```bash
+gg_clone_dependencies --input ~/dev/gg
+```
+
+## Exclude dependencies from cloning
+
+```bash
+gg_clone_dependencies --exclude flutter
+```
