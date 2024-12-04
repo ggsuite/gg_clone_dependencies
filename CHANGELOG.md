@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [1.0.1] - 2024-12-04
 
 ### Added
 
@@ -12,3 +12,6 @@
 
 - change to named parameters in all methods
 - restructure tests
+- new version
+
+[1.0.1]: https://github.com/inlavigo/gg_clone_dependencies/tag/%tag
