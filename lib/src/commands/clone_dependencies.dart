@@ -53,7 +53,7 @@ class CloneDependencies extends DirCommand<dynamic> {
     argParser.addOption(
       'target',
       help: 'The target directory to clone the dependencies to.',
-      defaultsTo: '.',
+      defaultsTo: _defaultTarget,
     );
     argParser.addMultiOption(
       'exclude',
@@ -65,13 +65,14 @@ class CloneDependencies extends DirCommand<dynamic> {
   // ...........................................................................
   static const _cloneAllDefault = true;
   static const _cloneDirectDefault = false;
+  static const _defaultTarget = '..';
 
   // ...........................................................................
   /// Returns the directory from the command line arguments
-  Directory? get targetFromArgs =>
-      argResults?['target'] == null || (argResults?['target'] as String?) == '.'
-          ? null
-          : Directory(argResults?['target'] as String? ?? '.');
+  Directory? get targetFromArgs => argResults?['target'] == null ||
+          (argResults?['target'] as String?) == _defaultTarget
+      ? null
+      : Directory(argResults?['target'] as String? ?? _defaultTarget);
 
   // ...........................................................................
   /// Returns the exclude list from the command line arguments
