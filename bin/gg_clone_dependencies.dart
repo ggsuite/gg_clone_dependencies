@@ -6,8 +6,8 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:gg_args/gg_args.dart';
-import 'package:gg_log/gg_log.dart';
 import 'package:gg_clone_dependencies/gg_clone_dependencies.dart';
+import 'package:gg_log/gg_log.dart';
 
 // .............................................................................
 Future<void> run({
@@ -16,7 +16,10 @@ Future<void> run({
 }) =>
     GgCommandRunner(
       ggLog: ggLog,
-      command: GgCloneDependencies(ggLog: ggLog),
+      command: CloneDependencies(
+        ggLog: ggLog,
+        name: 'gg_clone_depenencies',
+      ),
     ).run(args: args);
 
 // .............................................................................

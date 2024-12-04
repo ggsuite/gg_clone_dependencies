@@ -19,8 +19,8 @@ class CloneDependencies extends DirCommand<dynamic> {
   /// Constructor
   CloneDependencies({
     required super.ggLog,
+    super.name = 'clone-dependencies',
   }) : super(
-          name: 'clone-dependencies',
           description: 'Clones all dependencies to the current workspace',
         ) {
     _addArgs();
@@ -32,14 +32,14 @@ class CloneDependencies extends DirCommand<dynamic> {
       'all',
       abbr: 'a',
       help: 'Clone all dependencies of the project.',
-      defaultsTo: true,
+      defaultsTo: _cloneAllDefault,
       negatable: false,
     );
     argParser.addFlag(
       'direct',
       abbr: 'd',
       help: 'Clone only direct dependencies of the project.',
-      defaultsTo: false,
+      defaultsTo: _cloneDirectDefault,
       negatable: false,
     );
     argParser.addFlag(
@@ -61,6 +61,10 @@ class CloneDependencies extends DirCommand<dynamic> {
   }
 
   // ...........................................................................
+  static const _cloneAllDefault = true;
+  static const _cloneDirectDefault = false;
+
+  // ...........................................................................
   /// Returns the directory from the command line arguments
   Directory? get targetFromArgs =>
       argResults?['target'] == null || (argResults?['target'] as String?) == '.'
@@ -74,11 +78,12 @@ class CloneDependencies extends DirCommand<dynamic> {
 
   // ...........................................................................
   /// Returns the all flag from the command line arguments
-  bool get allFromArgs => argResults?['all'] as bool? ?? true;
+  bool get allFromArgs => argResults?['all'] as bool? ?? _cloneAllDefault;
 
   // ...........................................................................
   /// Returns the direct flag from the command line arguments
-  bool get directFromArgs => argResults?['direct'] as bool? ?? false;
+  bool get directFromArgs =>
+      argResults?['direct'] as bool? ?? _cloneDirectDefault;
 
   // ...........................................................................
   /// Returns the checkout-main flag from the command line arguments

@@ -6,4 +6,4 @@
 
 library;
 
-export 'src/gg_clone_dependencies.dart';
+export 'src/commands/clone_dependencies.dart';
