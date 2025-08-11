@@ -23,12 +23,7 @@ void main() {
   });
 
   tearDown(() {
-    deleteDirs(
-      [
-        tempDir,
-        tempDir2,
-      ],
-    );
+    deleteDirs([tempDir, tempDir2]);
   });
 
   group('bin/gg_clone_dependencies.dart', () {

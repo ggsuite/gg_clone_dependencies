@@ -17,12 +17,8 @@ import 'package:http/http.dart' as http;
 /// Clone all dependencies of the project
 class CloneDependencies extends DirCommand<dynamic> {
   /// Constructor
-  CloneDependencies({
-    required super.ggLog,
-    super.name = 'clone-dependencies',
-  }) : super(
-          description: 'Clones all dependencies to the current workspace',
-        ) {
+  CloneDependencies({required super.ggLog, super.name = 'clone-dependencies'})
+    : super(description: 'Clones all dependencies to the current workspace') {
     _addArgs();
   }
 
@@ -44,7 +40,8 @@ class CloneDependencies extends DirCommand<dynamic> {
     );
     argParser.addFlag(
       'checkout-main-branch',
-      help: 'Checkout the main branch of git dependencies. '
+      help:
+          'Checkout the main branch of git dependencies. '
           'Use --no-checkout-main-branch to checkout exact revision specified '
           'in the pubspec.yaml.',
       defaultsTo: true,
@@ -69,7 +66,8 @@ class CloneDependencies extends DirCommand<dynamic> {
 
   // ...........................................................................
   /// Returns the directory from the command line arguments
-  Directory? get targetFromArgs => argResults?['target'] == null ||
+  Directory? get targetFromArgs =>
+      argResults?['target'] == null ||
           (argResults?['target'] as String?) == _defaultTarget
       ? null
       : Directory(argResults?['target'] as String? ?? _defaultTarget);
@@ -149,7 +147,8 @@ class CloneDependencies extends DirCommand<dynamic> {
       }
       processedNodes.add(dependencyName);
 
-      Directory dependencyDir = getProjectDir(
+      Directory dependencyDir =
+          getProjectDir(
             packageName: dependencyName,
             workspaceDir: workspaceDir,
           ) ??
@@ -224,7 +223,8 @@ class CloneDependencies extends DirCommand<dynamic> {
           reference: reference,
         );
 
-        dependencyDir = getProjectDir(
+        dependencyDir =
+            getProjectDir(
               packageName: dependencyName,
               workspaceDir: workspaceDir,
             ) ??
@@ -269,24 +269,26 @@ class CloneDependencies extends DirCommand<dynamic> {
       String,
       List<String>, {
       String? workingDirectory,
-    })? processRun,
+    })?
+    processRun,
   }) async {
     processRun ??= Process.run;
 
-    final result = await processRun(
-      'git',
-      ['ls-remote', repositoryUrl, 'origin'],
-      workingDirectory: workspaceDir.path,
-    );
+    final result = await processRun('git', [
+      'ls-remote',
+      repositoryUrl,
+      'origin',
+    ], workingDirectory: workspaceDir.path);
 
     // coverage:ignore-start
     if (result.exitCode == 128) {
       return false;
     } else if (result.exitCode != 0) {
       throw Exception(
-          'Error while running "git ls-remote $repositoryUrl origin".\n'
-          'Exit code: ${result.exitCode}\n'
-          'Error: ${result.stderr}\n');
+        'Error while running "git ls-remote $repositoryUrl origin".\n'
+        'Exit code: ${result.exitCode}\n'
+        'Error: ${result.stderr}\n',
+      );
     } else {
       return true;
     }
@@ -305,7 +307,8 @@ class CloneDependencies extends DirCommand<dynamic> {
       String,
       List<String>, {
       String? workingDirectory,
-    })? processRun,
+    })?
+    processRun,
   }) async {
     processRun ??= Process.run;
 
@@ -372,11 +375,13 @@ Future<bool> dependencyExists({
 /// Helper method to correct a directory
 Directory correctDir(Directory directory) {
   if (directory.path.endsWith('\\.') || directory.path.endsWith('/.')) {
-    directory =
-        Directory(directory.path.substring(0, directory.path.length - 2));
+    directory = Directory(
+      directory.path.substring(0, directory.path.length - 2),
+    );
   } else if (directory.path.endsWith('\\') || directory.path.endsWith('/')) {
-    directory =
-        Directory(directory.path.substring(0, directory.path.length - 1));
+    directory = Directory(
+      directory.path.substring(0, directory.path.length - 1),
+    );
   }
   return directory;
 }

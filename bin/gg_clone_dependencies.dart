@@ -10,22 +10,13 @@ import 'package:gg_clone_dependencies/gg_clone_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 
 // .............................................................................
-Future<void> run({
-  required List<String> args,
-  required GgLog ggLog,
-}) =>
+Future<void> run({required List<String> args, required GgLog ggLog}) =>
     GgCommandRunner(
       ggLog: ggLog,
-      command: CloneDependencies(
-        ggLog: ggLog,
-        name: 'gg_clone_depenencies',
-      ),
+      command: CloneDependencies(ggLog: ggLog, name: 'gg_clone_depenencies'),
     ).run(args: args);
 
 // .............................................................................
 Future<void> main(List<String> args) async {
-  await run(
-    args: args,
-    ggLog: print,
-  );
+  await run(args: args, ggLog: print);
 }
