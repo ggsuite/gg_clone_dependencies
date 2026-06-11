@@ -705,6 +705,99 @@ dependencies:
         );
       });
 
+      test('should clone https urls into an org-prefixed folder', () async {
+        // Mock the Process.run and capture the git arguments
+        late List<String> capturedArguments;
+        Future<ProcessResult> mockProcessRun(
+          String executable,
+          List<String> arguments, {
+          String? workingDirectory,
+          Map<String, String>? environment,
+          bool includeParentEnvironment = true,
+          bool runInShell = false,
+          ProcessStartMode mode = ProcessStartMode.normal,
+        }) async {
+          capturedArguments = arguments;
+          return ProcessResult(0, 0, 'mock output', '');
+        }
+
+        const repositoryUrl = 'https://github.com/inlavigo/dependency1.git';
+
+        await CloneDependencies(ggLog: messages.add).cloneDependency(
+          workspaceDir: tempDir,
+          dependency: 'dependency1',
+          repositoryUrl: repositoryUrl,
+          ggLog: messages.add,
+          processRun: mockProcessRun,
+        );
+
+        expect(
+          capturedArguments,
+          equals(['clone', repositoryUrl, 'inlavigo_dependency1']),
+        );
+      });
+
+      test('should clone ssh urls into an org-prefixed folder', () async {
+        // Mock the Process.run and capture the git arguments
+        late List<String> capturedArguments;
+        Future<ProcessResult> mockProcessRun(
+          String executable,
+          List<String> arguments, {
+          String? workingDirectory,
+          Map<String, String>? environment,
+          bool includeParentEnvironment = true,
+          bool runInShell = false,
+          ProcessStartMode mode = ProcessStartMode.normal,
+        }) async {
+          capturedArguments = arguments;
+          return ProcessResult(0, 0, 'mock output', '');
+        }
+
+        const repositoryUrl = 'git@github.com:inlavigo/dependency1.git';
+
+        await CloneDependencies(ggLog: messages.add).cloneDependency(
+          workspaceDir: tempDir,
+          dependency: 'dependency1',
+          repositoryUrl: repositoryUrl,
+          ggLog: messages.add,
+          processRun: mockProcessRun,
+        );
+
+        expect(
+          capturedArguments,
+          equals(['clone', repositoryUrl, 'inlavigo_dependency1']),
+        );
+      });
+
+      test('should clone without target folder if org is unknown', () async {
+        // Mock the Process.run and capture the git arguments
+        late List<String> capturedArguments;
+        Future<ProcessResult> mockProcessRun(
+          String executable,
+          List<String> arguments, {
+          String? workingDirectory,
+          Map<String, String>? environment,
+          bool includeParentEnvironment = true,
+          bool runInShell = false,
+          ProcessStartMode mode = ProcessStartMode.normal,
+        }) async {
+          capturedArguments = arguments;
+          return ProcessResult(0, 0, 'mock output', '');
+        }
+
+        const repositoryUrl = 'https://github.com/dependency1.git';
+
+        await CloneDependencies(ggLog: messages.add).cloneDependency(
+          workspaceDir: tempDir,
+          dependency: 'dependency1',
+          repositoryUrl: repositoryUrl,
+          ggLog: messages.add,
+          processRun: mockProcessRun,
+        );
+
+        expect(capturedArguments, equals(['clone', repositoryUrl]));
+      });
+
       test('should throw exception if git clone fails', () async {
         // Mock the Process.run to simulate git clone failure
         Future<ProcessResult> mockProcessRun(
@@ -738,6 +831,40 @@ dependencies:
             ),
           ),
         );
+      });
+    });
+
+    group('orgPrefixedFolderName', () {
+      test('should extract org and repo from https urls', () {
+        expect(
+          orgPrefixedFolderName('https://github.com/ggsuite/gg_test.git'),
+          equals('ggsuite_gg_test'),
+        );
+        expect(
+          orgPrefixedFolderName('https://github.com/ggsuite/gg_test'),
+          equals('ggsuite_gg_test'),
+        );
+      });
+
+      test('should extract org and repo from ssh urls', () {
+        expect(
+          orgPrefixedFolderName('git@github.com:ggsuite/gg_test.git'),
+          equals('ggsuite_gg_test'),
+        );
+      });
+
+      test('should use the first segment after v3 for azure ssh urls', () {
+        expect(
+          orgPrefixedFolderName(
+            'git@ssh.dev.azure.com:v3/myorg/myproject/gg_test',
+          ),
+          equals('myorg_gg_test'),
+        );
+      });
+
+      test('should return null if no org can be extracted', () {
+        expect(orgPrefixedFolderName('dependency1'), isNull);
+        expect(orgPrefixedFolderName('https://github.com/gg_test.git'), isNull);
       });
     });
 
