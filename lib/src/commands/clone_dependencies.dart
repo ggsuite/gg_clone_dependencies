@@ -314,13 +314,8 @@ class CloneDependencies extends DirCommand<dynamic> {
 
     ggLog('Cloning $dependency into workspace...');
 
-    List<String> arguments = ['clone', repositoryUrl];
-    final targetFolder = orgPrefixedFolderName(repositoryUrl);
-    if (targetFolder != null) {
-      arguments.add(targetFolder);
-    }
-
     // coverage:ignore-start
+    List<String> arguments = ['clone', repositoryUrl];
     if (reference != null) {
       arguments.add('-b');
       arguments.add(reference);
@@ -425,40 +420,6 @@ Future<String?> getRepositoryUrl(String packageName) async {
     // Package not found or an error occurred.
     return null;
   }
-}
-
-// ...........................................................................
-/// Derives the target folder name `<org>_<repo>` from a repository url.
-/// Returns null if no organization can be extracted.
-String? orgPrefixedFolderName(String repositoryUrl) {
-  final url = repositoryUrl.endsWith('.git')
-      ? repositoryUrl.substring(0, repositoryUrl.length - '.git'.length)
-      : repositoryUrl;
-
-  String? path;
-  final scpMatch = RegExp(r'^[^@/\\]+@[^:/\\]+:(.+)$').firstMatch(url);
-  if (scpMatch != null) {
-    path = scpMatch.group(1);
-  } else {
-    final uri = Uri.tryParse(url);
-    if (uri != null && uri.host.isNotEmpty) {
-      path = uri.path;
-    }
-  }
-  if (path == null) {
-    return null;
-  }
-
-  final segments = path.split('/').where((s) => s.isNotEmpty).toList();
-
-  // Azure DevOps ssh urls: v3/<org>/<project>/<repo>
-  if (segments.isNotEmpty && segments.first == 'v3') {
-    segments.removeAt(0);
-  }
-  if (segments.length < 2) {
-    return null;
-  }
-  return '${segments.first}_${segments.last}';
 }
 
 // ...........................................................................
