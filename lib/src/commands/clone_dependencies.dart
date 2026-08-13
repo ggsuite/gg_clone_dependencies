@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2019 - 2024 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) ggsuite
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -7,10 +7,14 @@
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
+
 import 'dart:io';
+
 import 'package:gg_project_root/gg_project_root.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 // #############################################################################

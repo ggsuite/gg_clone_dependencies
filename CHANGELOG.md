@@ -1,12 +1,23 @@
 # Changelog
 
-## [1.1.1] - 2026-06-25
+## 1.2.0 - 2026-08-13
+
+### Changed
+
+- Rework copyright headers
 
 ### Fixed
 
-- Revert org-prefixed repo folders (ticket org\_prefix\_folders); keep gg\_cross\_language\_deps
+- Cleanup copy right headers. Update to dart 3.13. Auto fixes.
+- Cleanup copy right headers. Update to dart 3.13. Auto fixes. Setup quick-check pipeline.
 
-## [1.1.0] - 2026-06-11
+## 1.1.1 - 2026-06-25
+
+### Fixed
+
+- Revert org-prefixed repo folders (ticket org_prefix_folders); keep gg_cross_language_deps
+
+## 1.1.0 - 2026-06-11
 
 ### Added
 
@@ -15,9 +26,9 @@
 
 ### Fixed
 
-- feat: clone new dependencies into org-prefixed folders (<org>\_<repo>)
+- feat: clone new dependencies into org-prefixed folders (<org>_<repo>)
 
-## [1.0.1] - 2024-12-04
+## 1.0.1 - 2024-12-04
 
 ### Added
 
@@ -30,7 +41,3 @@
 - change to named parameters in all methods
 - restructure tests
 - new version
-
-[1.1.1]: https://github.com/inlavigo/gg_clone_dependencies/compare/1.1.0...1.1.1
-[1.1.0]: https://github.com/inlavigo/gg_clone_dependencies/compare/1.0.1...1.1.0
-[1.0.1]: https://github.com/inlavigo/gg_clone_dependencies/tag/%tag

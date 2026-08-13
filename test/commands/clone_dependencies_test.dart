@@ -1,10 +1,11 @@
 // @license
-// Copyright (c) 2019 - 2024 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) ggsuite
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_log/gg_log.dart';
@@ -121,9 +122,8 @@ void main() {
 
         test('pubspec.yaml cannot be parsed', () async {
           // Create a pubspec.yaml with invalid content in tempDir
-          await File(
-            p.join(dParseError.path, 'pubspec.yaml'),
-          ).writeAsString('invalid yaml');
+          await File(p.join(dParseError.path, 'pubspec.yaml'))
+              .writeAsString('invalid yaml');
 
           await expectLater(
             runner.run(['clone-dependencies', '--input', dParseError.path]),
@@ -369,14 +369,13 @@ dependencies:
 ''');
 
           // Create a pubspec.yaml for the direct dependency
-          await File(p.join(directDepDir.path, 'pubspec.yaml')).writeAsString(
-            '''
+          await File(p.join(directDepDir.path, 'pubspec.yaml'))
+              .writeAsString('''
 name: $directDependency
 version: 1.0.0
 dependencies:
   $transitiveDependency: ^1.0.0
-''',
-          );
+''');
 
           // Run the command with the direct argument
           await runner.run([
@@ -412,24 +411,22 @@ dependencies:
                 'async'; // Let's assume 'http' depends on 'async'
 
             // Create a pubspec.yaml for the project
-            await File(p.join(projectDir.path, 'pubspec.yaml')).writeAsString(
-              '''
+            await File(p.join(projectDir.path, 'pubspec.yaml'))
+                .writeAsString('''
 name: project1
 version: 1.0.0
 dependencies:
   $directDependency: ^1.0.0
-''',
-            );
+''');
 
             // Create a pubspec.yaml for the direct dependency
-            await File(p.join(directDepDir.path, 'pubspec.yaml')).writeAsString(
-              '''
+            await File(p.join(directDepDir.path, 'pubspec.yaml'))
+                .writeAsString('''
 name: $directDependency
 version: 1.0.0
 dependencies:
   $transitiveDependency: ^1.0.0
-''',
-            );
+''');
 
             // Run the command with the all argument (which defaults to true)
             await runner.run([
