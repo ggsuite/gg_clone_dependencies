@@ -9,4 +9,4 @@
 // coverage:ignore-file
 
 /// The version of the `gg_clone_dependencies` package.
-const String ggCloneDependenciesVersion = '1.2.0';
+const String ggCloneDependenciesVersion = '1.3.0';
