@@ -213,10 +213,10 @@ packages:
     dependency: "direct dev"
     description:
       name: gg_capture_print
-      sha256: fd793824121435fe128619c99bcf4a6fac9398188dcc7dd3def6cfe02d2327f9
+      sha256: "3c35399877ccc15f8ea2e768064b1db847a4f71c303708ea1cd52d8934bc0417"
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.0"
+    version: "1.2.1"
   gg_console_colors:
     dependency: "direct main"
     description:
@@ -245,10 +245,10 @@ packages:
     dependency: "direct main"
     description:
       name: gg_local_package_dependencies
-      sha256: f9683a62caa8f923c90778642e16f3fb62ec627a5972f14b6b063de417c344b3
+      sha256: bdf1c4c578a77f838f63aeca78283d56655fc2e3aaeec5256d0ec01c11e203e0
       url: "https://pub.dev"
     source: hosted
-    version: "4.2.0"
+    version: "4.2.3"
   gg_log:
     dependency: "direct main"
     description:
@@ -269,10 +269,10 @@ packages:
     dependency: "direct main"
     description:
       name: gg_project_root
-      sha256: a14189a00b2282ba5c0d0c84444a99b452ba44a65ef6a48fdc1833a97b5c64b5
+      sha256: "927fefd58785653a8338ffe386b2781a39843744cf907a8c0aa28dad67b7fea7"
       url: "https://pub.dev"
     source: hosted
-    version: "2.2.0"
+    version: "2.2.3"
   glob:
     dependency: transitive
     description:
