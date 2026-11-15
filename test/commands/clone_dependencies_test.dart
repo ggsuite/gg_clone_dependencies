@@ -94,7 +94,7 @@ void main() {
       test(
         'should print a usage description when called with --help',
         () async {
-          capturePrint(
+          await capturePrint(
             ggLog: messages.add,
             code: () => runner.run(['clone-dependencies', '--help']),
           );
